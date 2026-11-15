@@ -146,7 +146,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbfd] text-slate-900 flex flex-col font-sans selection:bg-[#ff4d6d]/15 selection:text-[#3525cd]">
+    <div className="min-h-screen bg-[#fafbfd] text-slate-900 flex flex-col font-sans selection:bg-pink-100 selection:text-green-800">
       {/* Top Header with Brand and Simple Menu */}
       <Header
         currentScreen={currentScreen}

@@ -344,7 +344,7 @@ export async function buildKnowledgeContent(
 Nhiệm vụ: Tổng hợp tài liệu học tập có cấu trúc chặt chẽ (Chương -> Mục -> Khái niệm & Định nghĩa -> Giải thích -> Ví dụ -> Điểm trọng tâm) DỰA TRÊN nội dung thực tế của các nguồn web được cung cấp.
 Quy tắc bắt buộc:
 - Chỉ sử dụng thông tin có căn cứ từ các nguồn đã cung cấp và kiến thức chuẩn xác liên quan trực tiếp đến chủ đề.
-- Với mỗi mục, ghi rõ "sourceRefIds" là mảng ID của các nguồn đã tham khảo (ví dụ: ["${research.sources[0].id}"]) và "usedQuotes" là 1-2 đoạn trích ngắn từ nguồn.
+- Với mỗi mục, ghi rõ "sourceRefIds" là mảng ID của các nguồn đã tham khảo (ví dụ: ["${research.sources[0].id}"]) và "usedQuotes" là 1-2 đoạn trích ngắn từ chính nguồn đó. Mỗi mục phải có ít nhất một sourceRefId hợp lệ hỗ trợ nội dung của mục.
 - Không tự bịa URL mới.
 - Ngôn ngữ trình bày: ${request.language}.`
     : `Bạn là Giảng viên Đại học và Chuyên gia biên soạn học liệu.
@@ -426,6 +426,8 @@ ${hasWebSources ? `DỮ LIỆU NGUỒN WEB ĐÃ TRUY XUẤT:\n${webContextBlock}
                           'concepts',
                           'explanation',
                           'keyPoints',
+                          'sourceRefIds',
+                          'usedQuotes',
                         ],
                       },
                     },
@@ -472,10 +474,10 @@ ${hasWebSources ? `DỮ LIỆU NGUỒN WEB ĐÃ TRUY XUẤT:\n${webContextBlock}
       title: c.title || `Chuyên đề ${chapNum}`,
       summary: c.summary || '',
       sections: (c.sections || []).map((s, sIdx) => {
-        const refIds = (s.sourceRefIds || []).filter((id) => validSourceIds.has(id));
+        const refIds = [...new Set((s.sourceRefIds || []).filter((id) => validSourceIds.has(id)))];
         if (hasWebSources && s.usedQuotes && s.usedQuotes.length > 0) {
           for (const src of research.sources) {
-            if (refIds.includes(src.id) || refIds.length === 0) {
+            if (refIds.includes(src.id)) {
               for (const q of s.usedQuotes) {
                 if (q && q.trim().length > 10 && !src.usedExcerpts.includes(q.trim())) {
                   src.usedExcerpts.push(q.trim());

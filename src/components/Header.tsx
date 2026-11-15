@@ -55,12 +55,12 @@ export const Header: React.FC<HeaderProps> = ({
           id="brand-logo-button"
           className="flex items-center gap-2.5 cursor-pointer group select-none whitespace-nowrap shrink-0"
         >
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-200">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#ec4899] to-[#16a34a] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-200">
             <span className="material-symbols-outlined text-[20px]">search</span>
           </span>
           <span className="font-brand font-extrabold text-2xl tracking-tight text-slate-900">
             quizz
-            <span className="bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#ec4899] to-[#16a34a] bg-clip-text text-transparent">
               Ai
             </span>
           </span>
@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={handleGoHome}
             className={`whitespace-nowrap shrink-0 py-1 border-b-2 transition-colors cursor-pointer ${
               currentScreen === 'upload'
-                ? 'text-[#4f46e5] border-[#ff4d6d] font-semibold'
+                ? 'text-[#15803d] border-[#ec4899] font-semibold'
                 : 'border-transparent hover:text-slate-900 hover:border-slate-300'
             }`}
           >
@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={handleGoWorkspace}
-            className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ff4d6d] hover:border-[#ff4d6d]/60 transition-colors cursor-pointer"
+            className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ec4899] hover:border-[#ec4899]/60 transition-colors cursor-pointer"
           >
             Tạo đề ngay
           </button>
@@ -101,8 +101,8 @@ export const Header: React.FC<HeaderProps> = ({
               currentScreen === 'quiz-result' ||
               currentScreen === 'quiz-review' ||
               currentScreen === 'quiz-edit'
-                ? 'text-[#4f46e5] border-[#4f46e5] font-semibold'
-                : 'border-transparent hover:text-[#4f46e5] hover:border-[#4f46e5]/50'
+                ? 'text-[#15803d] border-[#15803d] font-semibold'
+                : 'border-transparent hover:text-[#15803d] hover:border-[#15803d]/50'
             }`}
           >
             Bộ câu hỏi
@@ -116,8 +116,8 @@ export const Header: React.FC<HeaderProps> = ({
             id="open-history-header-btn"
             className={`whitespace-nowrap shrink-0 py-1 border-b-2 transition-colors cursor-pointer ${
               currentScreen === 'library-history'
-                ? 'text-[#00b894] border-[#00b894] font-semibold'
-                : 'border-transparent hover:text-[#00b894] hover:border-[#00b894]/50'
+                ? 'text-[#15803d] border-[#15803d] font-semibold'
+                : 'border-transparent hover:text-[#15803d] hover:border-[#15803d]/50'
             }`}
           >
             Kho tài liệu
@@ -130,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onOpenSampleModal();
               }}
               id="open-samples-header-btn"
-              className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ff8c42] hover:border-[#ff8c42]/50 transition-colors cursor-pointer"
+              className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ec4899] hover:border-[#ec4899]/50 transition-colors cursor-pointer"
             >
               Tài liệu mẫu
             </button>
@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={handleGoWorkspace}
             id="create-new-quiz-btn"
-            className="px-4 py-2 text-xs sm:text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+            className="px-4 py-2 text-xs sm:text-sm font-bold text-white rounded-xl bg-[#ec4899] hover:bg-[#db2777] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all whitespace-nowrap shrink-0 cursor-pointer"
           >
             Bắt đầu ngay
           </button>
@@ -226,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id={`nav-screen-${screen.id}`}
                   className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                     isActive
-                      ? 'bg-[#4f46e5] text-white shadow-xs font-semibold'
+                      ? 'bg-[#15803d] text-white shadow-xs font-semibold'
                       : 'text-slate-600 hover:bg-white hover:text-slate-900'
                   }`}
                 >

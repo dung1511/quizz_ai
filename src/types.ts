@@ -180,6 +180,7 @@ export interface QuestionValidation {
 export interface QuestionIllustration {
   needsImage: boolean;
   imagePrompt?: string;
+  tikzCode?: string;
   imageUrl?: string;
   imageType?: 'diagram' | 'chart' | 'schema' | 'flowchart' | 'table';
   caption?: string;

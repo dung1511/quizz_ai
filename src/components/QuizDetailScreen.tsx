@@ -360,6 +360,9 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
                     {src.domain} · Truy xuất:{' '}
                     {new Date(src.retrievedAt).toLocaleString('vi-VN')}
                   </p>
+                  <p className="text-[11px] text-slate-600">
+                    Trang lý thuyết gốc dùng để biên soạn nội dung bộ đề.
+                  </p>
                 </div>
               ))}
             </div>
@@ -451,7 +454,14 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
               {question.illustration?.needsImage && (
                 <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] text-blue-600 shrink-0">image</span>
-                  <span><strong>Mô tả hình vẽ đi kèm:</strong> {question.illustration.prompt}</span>
+                  <span>
+                    <strong>
+                      {question.illustration.tikzCode ? 'Hình vẽ TikZ:' : 'Mô tả hình vẽ:'}
+                    </strong>{' '}
+                    {question.illustration.caption || question.illustration.imagePrompt || 'Minh họa cho câu hỏi'}
+                    {question.illustration.tikzCode &&
+                      ' Hình sẽ được dựng khi xuất đề LaTeX (.tex).'}
+                  </span>
                 </div>
               )}
 

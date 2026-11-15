@@ -1,4 +1,5 @@
 import { QuizSet, SampleDocument, QuizAttempt, Question } from '../types';
+import { OSI_TIKZ_CODE } from '../utils/defaultIllustrations';
 
 export const SAMPLE_DOCUMENTS: SampleDocument[] = [
   {
@@ -624,6 +625,7 @@ export const INITIAL_QUIZ_SET: QuizSet = {
         needsImage: true,
         imageType: 'schema',
         imagePrompt: 'Sơ đồ phân tầng 7 lớp của mô hình OSI',
+        tikzCode: OSI_TIKZ_CODE,
         caption: 'Mô hình 7 tầng OSI (ISO 7498)',
       },
     },

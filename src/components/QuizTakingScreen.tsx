@@ -176,7 +176,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
               {/* Mini progress bar */}
               <div className="w-32 sm:w-48 h-1.5 bg-[#e6e8ea] rounded-full overflow-hidden mt-1">
                 <div
-                  className="h-full bg-[#3525cd] rounded-full transition-all duration-300"
+                  className="h-full bg-[#15803d] rounded-full transition-all duration-300"
                   style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
                 />
               </div>
@@ -212,7 +212,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
             <button
               onClick={() => setShowSubmitModal(true)}
               id="btn-submit-exam-top"
-              className="px-4 py-1.5 text-xs sm:text-sm font-bold bg-[#3525cd] hover:bg-[#291cb0] text-white rounded-lg shadow-xs transition-all flex items-center gap-1"
+              className="px-4 py-1.5 text-xs sm:text-sm font-bold bg-[#15803d] hover:bg-[#166534] text-white rounded-lg shadow-xs transition-all flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">done_all</span>
               <span>Nộp bài</span>
@@ -229,7 +229,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
             {/* Question Top Meta */}
             <div className="flex items-center justify-between pb-3 border-b border-[#e2e4e8]">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-[#3525cd]/10 text-[#3525cd] font-bold text-xs">
+                <span className="px-2.5 py-1 rounded-md bg-[#16a34a]/10 text-[#15803d] font-bold text-xs">
                   Câu hỏi {currentIndex + 1}
                 </span>
                 {currentQuestion.topic && (
@@ -278,14 +278,14 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                     id={`option-${opt.key}`}
                     className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-4 select-none ${
                       isSelected
-                        ? 'border-[#3525cd] bg-[#3525cd]/5 shadow-xs'
+                        ? 'border-[#15803d] bg-[#16a34a]/5 shadow-xs'
                         : 'border-[#e2e4e8] hover:border-[#c7c4d8] bg-white hover:bg-[#f7f9fb]'
                     }`}
                   >
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 transition-all ${
                         isSelected
-                          ? 'bg-[#3525cd] text-white'
+                          ? 'bg-[#15803d] text-white'
                           : 'bg-[#f2f4f6] text-[#464555] border border-[#e2e4e8]'
                       }`}
                     >
@@ -297,7 +297,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                     <div className="mt-1 shrink-0">
                       <div
                         className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                          isSelected ? 'border-[#3525cd] bg-[#3525cd]' : 'border-[#c7c4d8]'
+                          isSelected ? 'border-[#15803d] bg-[#15803d]' : 'border-[#c7c4d8]'
                         }`}
                       >
                         {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -324,7 +324,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                 <button
                   onClick={() => setShowSubmitModal(true)}
                   id="btn-submit-exam-bottom"
-                  className="px-6 py-2.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#3525cd]/25 transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#15803d]/25 transition-all flex items-center gap-1.5"
                 >
                   <span>Nộp bài kiểm tra</span>
                   <span className="material-symbols-outlined text-[18px]">check_circle</span>
@@ -333,7 +333,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                 <button
                   onClick={() => setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
                   id="btn-next-question"
-                  className="px-5 py-2 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-1.5"
                 >
                   <span>Câu tiếp theo</span>
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -365,11 +365,11 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                     id={`palette-btn-${idx + 1}`}
                     className={`relative h-10 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
                       isCurrent
-                        ? 'ring-2 ring-[#3525cd] ring-offset-2'
+                        ? 'ring-2 ring-[#15803d] ring-offset-2'
                         : ''
                     } ${
                       isAnswered
-                        ? 'bg-[#3525cd] text-white'
+                        ? 'bg-[#15803d] text-white'
                         : 'bg-[#f7f9fb] text-[#464555] border border-[#e2e4e8] hover:bg-[#e6e8ea]'
                     }`}
                   >
@@ -385,7 +385,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
             {/* Legend */}
             <div className="pt-3 border-t border-[#e2e4e8] space-y-1.5 text-[11px] text-[#777587]">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-sm bg-[#3525cd]" />
+                <span className="w-3 h-3 rounded-sm bg-[#15803d]" />
                 <span>Đã trả lời ({answeredCount})</span>
               </div>
               <div className="flex items-center gap-2">
@@ -403,7 +403,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
               <button
                 onClick={() => setShowSubmitModal(true)}
                 id="btn-sidebar-submit"
-                className="w-full py-2.5 rounded-xl border-2 border-[#3525cd] text-[#3525cd] hover:bg-[#3525cd] hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl border-2 border-[#15803d] text-[#15803d] hover:bg-[#15803d] hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">send</span>
                 <span>Nộp bài thi</span>
@@ -417,7 +417,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-[#e2e4e8] shadow-2xl max-w-md w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-[#e2dfff]/60 text-[#3525cd] flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-[#dcfce7]/60 text-[#15803d] flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-[28px]">assignment_turned_in</span>
             </div>
 
@@ -426,7 +426,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                 Xác nhận nộp bài thi?
               </h3>
               <p className="text-xs text-[#777587]">
-                Bạn đã trả lời <span className="font-bold text-[#3525cd]">{answeredCount}</span> trên tổng số{' '}
+                Bạn đã trả lời <span className="font-bold text-[#15803d]">{answeredCount}</span> trên tổng số{' '}
                 <span className="font-bold text-[#191c1e]">{totalQuestions}</span> câu hỏi.
               </p>
             </div>
@@ -449,7 +449,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
               <button
                 onClick={() => handleFinish(false)}
                 id="btn-confirm-submit"
-                className="flex-1 py-2.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs font-bold shadow-md shadow-[#3525cd]/25 transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-md shadow-[#15803d]/25 transition-all"
               >
                 Nộp bài ngay
               </button>

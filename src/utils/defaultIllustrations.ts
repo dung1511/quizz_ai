@@ -1,0 +1,13 @@
+export const OSI_TIKZ_CODE = String.raw`\draw[rounded corners,fill=green!12] (0,0) rectangle (5,0.65) node[midway]{1. Vật lý};
+\draw[-{Stealth},thick] (2.5,0.7) -- (2.5,0.9);
+\draw[rounded corners,fill=green!12] (0,1) rectangle (5,1.65) node[midway]{2. Liên kết dữ liệu};
+\draw[-{Stealth},thick] (2.5,1.7) -- (2.5,1.9);
+\draw[rounded corners,fill=green!12] (0,2) rectangle (5,2.65) node[midway]{3. Mạng};
+\draw[-{Stealth},thick] (2.5,2.7) -- (2.5,2.9);
+\draw[rounded corners,fill=green!12] (0,3) rectangle (5,3.65) node[midway]{4. Giao vận};
+\draw[-{Stealth},thick] (2.5,3.7) -- (2.5,3.9);
+\draw[rounded corners,fill=green!12] (0,4) rectangle (5,4.65) node[midway]{5. Phiên};
+\draw[-{Stealth},thick] (2.5,4.7) -- (2.5,4.9);
+\draw[rounded corners,fill=green!12] (0,5) rectangle (5,5.65) node[midway]{6. Trình diễn};
+\draw[-{Stealth},thick] (2.5,5.7) -- (2.5,5.9);
+\draw[rounded corners,fill=green!12] (0,6) rectangle (5,6.65) node[midway]{7. Ứng dụng};`;

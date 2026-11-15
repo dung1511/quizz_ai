@@ -49,7 +49,9 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({
                 Truy xuất nguồn gốc kiến thức & Căn cứ sư phạm
               </h3>
               <p className="text-xs text-slate-500">
-                Tài liệu: <span className="font-semibold text-slate-700">{source.documentName}</span> • Trang {source.page}
+                {source.contentOrigin === 'WEB' ? 'Nội dung học tập tổng hợp từ Web: ' : 'Tài liệu: '}
+                <span className="font-semibold text-slate-700">{source.documentName}</span>
+                {source.contentOrigin !== 'WEB' && ` • Trang ${source.page}`}
               </p>
             </div>
           </div>
@@ -107,9 +109,13 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-indigo-600">menu_book</span>
-                Đoạn trích nguyên văn từ tài liệu (Trang {source.page})
+                {source.contentOrigin === 'WEB'
+                  ? 'Nội dung học tập làm căn cứ tạo câu hỏi'
+                  : `Đoạn trích nguyên văn từ tài liệu (Trang ${source.page})`}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">Bản ghi gốc</span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {source.contentOrigin === 'WEB' ? 'Bản nội dung học tập' : 'Bản ghi gốc'}
+              </span>
             </div>
             <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-amber-950 font-serif leading-relaxed text-[13.5px] italic relative">
               <div className="absolute top-2 right-2 text-amber-300">
@@ -119,7 +125,7 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({
             </div>
             {source.webSourceUrl && (
               <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 space-y-1">
-                <span className="font-bold block">Nguồn Web đã đối chiếu:</span>
+                <span className="font-bold block">Trang lý thuyết gốc dùng để biên soạn câu hỏi:</span>
                 <a
                   href={source.webSourceUrl}
                   target="_blank"

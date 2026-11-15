@@ -14,7 +14,6 @@ import { ExamMatrixModal } from './ExamMatrixModal';
 import { buildExamMatrix } from '../utils/matrixUtils';
 import { extractDocumentApi, processDocumentApi } from '../services/api';
 import { AiTextFlow } from './AiTextFlow';
-import heroMagnifyingGlassImg from '../assets/images/hero_magnifying_glass_clean_1794755347367.jpg';
 
 interface UploadScreenProps {
   onStartGenerate: (config: {
@@ -71,7 +70,6 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [extractionSuccess, setExtractionSuccess] = useState<string | null>(null);
-  const [heroImageError, setHeroImageError] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -254,18 +252,18 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
   const currentMatrix = buildExamMatrix(currentChapters, numQuestions, difficulty);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-14 sm:space-y-16">
-      {/* Hero Section: Gentle, Approachable Copy + Prominent Magnifying Glass Visual */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch pt-2">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 sm:space-y-12">
+      {/* Hero Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center pt-2">
         {/* Left Copy Column */}
         <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
-          <p className="font-brand text-sm font-semibold text-[#4f46e5] tracking-normal">
+          <p className="font-brand text-sm font-bold text-[#15803d] tracking-normal">
             Học tập nhẹ nhàng · Khám phá kiến thức mỗi ngày
           </p>
 
-          <h1 className="font-display text-3xl sm:text-5xl lg:text-[3.25rem] font-extrabold text-slate-900 tracking-tight leading-[1.14] [text-wrap:balance]">
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-[3.25rem] font-bold text-[#191c1e] tracking-tight leading-[1.14] [text-wrap:balance]">
             Biến tài liệu dài dòng thành{' '}
-            <span className="bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] bg-clip-text text-transparent animate-gradient-flow">
+            <span className="text-[#ec4899]">
               những giờ ôn tập đầy hứng khởi
             </span>
           </h1>
@@ -278,7 +276,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
             <button
               type="button"
               onClick={() => scrollToWorkspace('upload')}
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow text-white font-semibold text-sm sm:text-base shadow-md shadow-[#ff4d6d]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-6 py-3.5 rounded-2xl bg-[#ec4899] text-white font-bold text-sm sm:text-base shadow-md shadow-pink-500/20 hover:bg-[#db2777] hover:shadow-lg hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">upload_file</span>
               <span>Bắt đầu từ tài liệu</span>
@@ -287,9 +285,9 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
             <button
               type="button"
               onClick={() => scrollToWorkspace('text')}
-              className="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#4f46e5]/40 hover:text-[#4f46e5] text-slate-700 font-semibold text-sm sm:text-base shadow-2xs transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#15803d]/40 hover:text-[#15803d] text-slate-700 font-semibold text-sm sm:text-base shadow-2xs transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[20px] text-[#ff4d6d]">auto_awesome</span>
+              <span className="material-symbols-outlined text-[20px] text-[#ec4899]">auto_awesome</span>
               <span>Tạo nhanh theo chủ đề</span>
             </button>
           </div>
@@ -303,106 +301,39 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
           </div>
         </div>
 
-        {/* Right Prominent Magnifying Glass Visual */}
+        {/* Simple quiz card illustration */}
         <div className="lg:col-span-6">
-          <div className="relative h-full min-h-[280px] sm:min-h-[360px] rounded-[32px] overflow-hidden bg-gradient-to-br from-[#fff1e6] via-[#eff6ff] to-[#fdf2f8] shadow-xl shadow-indigo-950/8">
-            {!heroImageError ? (
-              <img
-                src={heroMagnifyingGlassImg}
-                alt="Hình ảnh kính lúp quizzAi soi sáng kiến thức và thẻ câu hỏi học tập"
-                referrerPolicy="no-referrer"
-                onError={() => setHeroImageError(true)}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-10 text-center gap-4 bg-gradient-to-br from-[#ffe4e6] via-[#fef3c7] to-[#dbeafe]">
-                <div className="w-24 h-24 rounded-3xl bg-white/90 shadow-md flex items-center justify-center text-[#ff4d6d]">
-                  <span className="material-symbols-outlined text-[52px]">search</span>
-                </div>
-                <p className="font-display font-bold text-lg text-slate-800">
-                  Soi rõ kiến thức trọng tâm cùng quizzAi
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Giới thiệu: Vibrant Eye-Catching Gradient Background Focused on Learning & Experience Quality */}
-      <section
-        id="gioi-thieu-trai-nghiem"
-        className="relative rounded-[32px] overflow-hidden p-7 sm:p-10 lg:p-12 text-white bg-gradient-to-br from-[#4f46e5] via-[#a855f7] to-[#ff4d6d] animate-gradient-flow shadow-xl shadow-indigo-950/15"
-      >
-        {/* Subtle luminous atmospheric accents */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#fbbf24]/30 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-[#2dd4bf]/25 blur-3xl"
-        />
-
-        <div className="relative z-10 space-y-8">
-          <div className="max-w-3xl space-y-3.5">
-            <p className="font-brand text-xs sm:text-sm font-semibold text-amber-200 tracking-wide">
-              Chất lượng trải nghiệm học tập
-            </p>
-            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight [text-wrap:balance]">
-              Học nhanh hơn, nhớ lâu hơn trên một không gian{' '}
-              <span className="bg-gradient-to-r from-[#fde047] via-[#6ee7b7] to-[#bae6fd] bg-clip-text text-transparent">
-                thoáng mắt và đầy cảm hứng
-              </span>
-            </h2>
-            <p className="font-sans text-sm sm:text-base text-white/92 leading-relaxed">
-              Thay vì cảm giác khô khan khi đối mặt với hàng chục trang tài liệu, quizzAi sắp xếp lại kiến thức thành từng mảnh ghép rõ ràng, chữ viết sắc nét và màu sắc tươi vui để mỗi phút ôn bài đều nhẹ nhàng.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
-              <div className="flex items-center justify-between">
-                <span className="material-symbols-outlined text-[24px] text-amber-200">
+          <div
+            role="img"
+            aria-label="Thẻ câu hỏi trắc nghiệm với các đáp án màu hồng và xanh lá"
+            className="relative flex min-h-[280px] sm:min-h-[360px] items-center justify-center overflow-hidden rounded-[32px] bg-[#f0f7ef] p-6 sm:p-10"
+          >
+            <div aria-hidden="true" className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-[#fce7f3]" />
+            <div aria-hidden="true" className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-[#dcfce7]" />
+            <div className="relative w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_16px_48px_-20px_rgba(20,83,45,0.28)] sm:p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-bold tracking-wide text-pink-600">
+                  CÂU HỎI 01
+                </span>
+                <span className="material-symbols-outlined text-[22px] text-[#15803d]">
                   auto_stories
                 </span>
-                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">01</span>
               </div>
-              <h3 className="font-brand text-lg font-bold text-white">
-                Thoáng mắt & Dễ đọc
-              </h3>
-              <p className="font-sans text-sm text-white/88 leading-relaxed">
-                Bo góc mềm mại, nhiều khoảng trắng cùng phông chữ tiếng Việt cân đối giúp bạn đọc lâu mà không bị rối mắt.
+              <p className="mb-5 text-lg font-bold leading-snug text-slate-900">
+                Bạn đã sẵn sàng ôn tập chưa?
               </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
-              <div className="flex items-center justify-between">
-                <span className="material-symbols-outlined text-[24px] text-emerald-200">
-                  manage_search
-                </span>
-                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">02</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-xl border border-[#16a34a]/30 bg-green-50/70 px-4 py-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#16a34a] text-white">
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                  </span>
+                  <span className="text-sm font-semibold text-slate-700">Bắt đầu ngay thôi!</span>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-slate-100 px-4 py-3">
+                  <span className="h-6 w-6 rounded-full border-2 border-pink-200" />
+                  <span className="text-sm font-medium text-slate-500">Để xem lại sau</span>
+                </div>
               </div>
-              <h3 className="font-brand text-lg font-bold text-white">
-                Bám sát ý trọng tâm
-              </h3>
-              <p className="font-sans text-sm text-white/88 leading-relaxed">
-                Tự động chia chương mục hợp lý, giữ trọn nội dung chính xác và truy xuất rõ ràng từng trang tài liệu.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
-              <div className="flex items-center justify-between">
-                <span className="material-symbols-outlined text-[24px] text-sky-200">
-                  sentiment_satisfied
-                </span>
-                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">03</span>
-              </div>
-              <h3 className="font-brand text-lg font-bold text-white">
-                Luyện tập đầy hứng thú
-              </h3>
-              <p className="font-sans text-sm text-white/88 leading-relaxed">
-                Làm bài mượt mà, nhận giải thích cặn kẽ ngay lập tức hoặc in đề giấy gọn đẹp chỉ với một cú nhấp chuột.
-              </p>
             </div>
           </div>
         </div>
@@ -433,7 +364,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               id="tab-upload-file"
               className={`flex-1 sm:flex-none px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'upload'
-                  ? 'bg-gradient-to-r from-[#4f46e5] to-[#6366f1] text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-[#15803d] to-[#16a34a] text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
             >
@@ -449,7 +380,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               id="tab-ai-prompt"
               className={`flex-1 sm:flex-none px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'text'
-                  ? 'bg-gradient-to-r from-[#ff4d6d] to-[#ff8c42] text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-[#ec4899] to-[#f472b6] text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
             >
@@ -490,12 +421,12 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                 id="file-dropzone"
                 className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-200 relative ${
                   isDragging
-                    ? 'border-indigo-600 bg-indigo-50/40 scale-[0.99]'
+                    ? 'border-green-600 bg-green-50/40 scale-[0.99]'
                     : isExtracting
-                    ? 'border-indigo-400 bg-indigo-50/30 cursor-wait'
+                    ? 'border-green-400 bg-green-50/30 cursor-wait'
                     : uploadedFile
                     ? 'border-emerald-400 bg-emerald-50/20 hover:border-emerald-600'
-                    : 'border-slate-300 hover:border-indigo-600 hover:bg-slate-50'
+                    : 'border-slate-300 hover:border-green-600 hover:bg-slate-50'
                 }`}
               >
                 <input
@@ -510,7 +441,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
 
                 {isExtracting ? (
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center">
                       <span className="material-symbols-outlined text-[32px] animate-spin">
                         refresh
                       </span>
@@ -547,7 +478,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                         e.stopPropagation();
                         fileInputRef.current?.click();
                       }}
-                      className="mt-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                      className="mt-1 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 rounded-lg transition-colors inline-flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-[16px]">sync</span>
                       Chọn tài liệu khác từ máy tính
@@ -555,12 +486,12 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+                    <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center shadow-xs">
                       <span className="material-symbols-outlined text-[28px]">cloud_upload</span>
                     </div>
                     <div>
                       <p className="font-semibold text-sm sm:text-base text-slate-900">
-                        Kéo thả file PDF, DOCX, TXT vào đây hoặc <span className="text-indigo-600 underline">duyệt từ máy</span>
+                        Kéo thả file PDF, DOCX, TXT vào đây hoặc <span className="text-pink-600 underline">duyệt từ máy</span>
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         Hỗ trợ giáo trình, slide bài giảng, đề cương ôn tập (Tự động giải mã nhị phân DOCX & PDF)
@@ -573,7 +504,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               {/* Sample Documents Quick Click */}
               <div className="space-y-2.5">
                 <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-[#4f46e5]">school</span>
+                  <span className="material-symbols-outlined text-[16px] text-[#15803d]">school</span>
                   Tài liệu mẫu sẵn có để trải nghiệm nhanh:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -584,11 +515,11 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                       id={`sample-doc-${sample.id}`}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer text-left ${
                         uploadedFile.name === sample.fileName
-                          ? 'border-[#4f46e5] bg-indigo-50/45 shadow-xs ring-1 ring-[#4f46e5]/40'
-                          : 'border-slate-200 bg-white hover:border-[#ff8c42]/60 hover:bg-slate-50/70'
+                          ? 'border-[#15803d] bg-green-50/45 shadow-xs ring-1 ring-[#15803d]/40'
+                          : 'border-slate-200 bg-white hover:border-[#ec4899]/60 hover:bg-slate-50/70'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#4f46e5] mb-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#15803d] mb-1.5">
                         <span>{sample.category}</span>
                         <span aria-hidden="true" className="text-slate-300">·</span>
                         <span className="text-slate-400 font-normal tabular-nums">{sample.fileSize}</span>
@@ -622,13 +553,13 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-indigo-600">account_tree</span>
+                    <span className="material-symbols-outlined text-[18px] text-green-700">account_tree</span>
                     Cấu trúc chương mục & Đơn vị kiến thức phát hiện trong tài liệu:
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsMatrixModalOpen(true)}
-                    className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-green-700 font-bold hover:underline flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-[16px]">grid_view</span>
                     Xem ma trận đặc tả đề thi
@@ -642,7 +573,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                       className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-indigo-600 text-[11px]">Chương {idx + 1}</span>
+                        <span className="font-bold text-green-700 text-[11px]">Chương {idx + 1}</span>
                         <span className="text-[10px] text-slate-400">Trang {chap.pageStart} - {chap.pageEnd}</span>
                       </div>
                       <h5 className="font-bold text-slate-900 text-xs line-clamp-1">{chap.title}</h5>
@@ -665,7 +596,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                     <span>Số lượng câu hỏi</span>
-                    <span className="text-indigo-600 font-extrabold">{numQuestions} câu</span>
+                    <span className="text-green-700 font-extrabold">{numQuestions} câu</span>
                   </label>
                   <div className="flex items-center gap-2">
                     {[5, 10, 20, 30].map((num) => (
@@ -675,7 +606,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                         onClick={() => setNumQuestions(num)}
                         className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
                           numQuestions === num
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            ? 'border-green-600 bg-green-50 text-green-700'
                             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                       >
@@ -742,7 +673,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               {/* Action Button */}
               <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[18px] text-indigo-600">lock_reset</span>
+                  <span className="material-symbols-outlined text-[18px] text-green-700">lock_reset</span>
                   <span>100% câu hỏi được lập từ ma trận và trích xuất nguồn đối soát</span>
                 </div>
 
@@ -750,7 +681,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                   onClick={handleStart}
                   disabled={isExtracting}
                   id="btn-start-generating"
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ff4d6d] animate-gradient-flow disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#15803d] hover:bg-[#166534] disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
                   <span>Bắt đầu AI phân tích & Tạo đề thi</span>

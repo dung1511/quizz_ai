@@ -23,7 +23,7 @@ export const SampleModal: React.FC<SampleModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#e2e4e8]">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-[#e2dfff] text-[#3525cd] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-[#dcfce7] text-[#15803d] flex items-center justify-center">
               <span className="material-symbols-outlined text-[24px]">menu_book</span>
             </div>
             <div>
@@ -51,11 +51,11 @@ export const SampleModal: React.FC<SampleModalProps> = ({
               onClick={() => setActiveDoc(doc)}
               className={`p-2.5 rounded-xl border text-left transition-all ${
                 activeDoc.id === doc.id
-                  ? 'border-[#3525cd] bg-[#3525cd]/5 shadow-xs'
+                  ? 'border-[#15803d] bg-[#16a34a]/5 shadow-xs'
                   : 'border-[#e2e4e8] hover:border-[#c7c4d8]'
               }`}
             >
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3525cd] block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#15803d] block">
                 {doc.category}
               </span>
               <span className="text-xs font-semibold text-[#191c1e] line-clamp-1 mt-0.5">
@@ -89,7 +89,7 @@ export const SampleModal: React.FC<SampleModalProps> = ({
               onSelectSample(activeDoc);
               onClose();
             }}
-            className="px-6 py-2.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
+            className="px-6 py-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
           >
             <span className="material-symbols-outlined text-[16px]">check</span>
             <span>Sử dụng tài liệu này để tạo đề</span>

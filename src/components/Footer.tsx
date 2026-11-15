@@ -24,12 +24,12 @@ export const Footer: React.FC<FooterProps> = ({
             }}
             className="inline-flex items-center gap-2.5 text-left group cursor-pointer"
           >
-            <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#ec4899] to-[#16a34a] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
               <span className="material-symbols-outlined text-[18px]">search</span>
             </span>
             <span className="font-brand font-extrabold text-xl tracking-tight text-slate-900">
               quizz
-              <span className="bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#ec4899] to-[#16a34a] bg-clip-text text-transparent">
                 Ai
               </span>
             </span>
@@ -49,28 +49,28 @@ export const Footer: React.FC<FooterProps> = ({
               onNavigate('upload');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="hover:text-[#4f46e5] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="hover:text-[#15803d] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Trang chủ
           </button>
           <button
             type="button"
             onClick={onStartWorkspace}
-            className="hover:text-[#ff4d6d] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="hover:text-[#ec4899] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Tạo đề thi
           </button>
           <button
             type="button"
             onClick={() => onNavigate('quiz-detail')}
-            className="hover:text-[#00b894] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="hover:text-[#15803d] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Bộ câu hỏi
           </button>
           <button
             type="button"
             onClick={() => onNavigate('library-history')}
-            className="hover:text-[#4f46e5] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="hover:text-[#15803d] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Kho tài liệu
           </button>
@@ -78,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({
             <button
               type="button"
               onClick={onOpenSampleModal}
-              className="hover:text-[#ff8c42] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="hover:text-[#ec4899] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               Tài liệu mẫu
             </button>

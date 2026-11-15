@@ -10,6 +10,8 @@ import {
 import { getGeminiClient } from './geminiClient';
 import { validateQuestionSet } from './questionValidator';
 import { cleanConceptName } from './documentProcessor';
+import { sanitizeTikzCode } from '../src/utils/tikzValidation';
+import { OSI_TIKZ_CODE } from '../src/utils/defaultIllustrations';
 
 export interface GenerateExamRequest {
   document: DocumentSource;
@@ -213,7 +215,8 @@ NGUYÊN TẮC BẮT BUỘC CHỐNG BỊA ĐẶT KIẾN THỨC (ANTI-HALLUCINATIO
    - sourceText: Đoạn văn bản nguyên văn trích từ tài liệu làm căn cứ cho câu hỏi.
    - knowledgeUnit: Tên đơn vị kiến thức (ví dụ "Câu lệnh SELECT", "Mô hình OSI").
    - generationReason: Lý do sư phạm cụ thể tại sao câu hỏi này được tạo từ phần kiến thức đó (ví dụ: "Kiến thức này là định nghĩa nền tảng của mục 2.1 và chứa thông tin phân loại cốt lõi."). Không dùng lý do chung chung!
-4. Nếu câu hỏi liên quan đến sơ đồ mạng, mô hình, kiến trúc hoặc bảng biểu, hãy đặt needsImage = true và mô tả imagePrompt, imageType ("diagram" | "chart" | "schema").
+4. Với câu hỏi toán học, viết biểu thức bằng LaTeX inline dạng $...$ khi phù hợp.
+5. Nếu câu hỏi cần biểu đồ, hình học, sơ đồ hoặc hình minh họa để trả lời, đặt needsImage = true và tạo tikzCode là phần lệnh nằm bên trong môi trường tikzpicture (không kèm documentclass, usepackage hay begin/end tikzpicture). Chỉ dùng các lệnh TikZ cơ bản như draw, fill, node, coordinate, path, addplot và môi trường axis/scope. Không dùng lệnh đọc/ghi tệp, định nghĩa macro hoặc lệnh hệ thống. imagePrompt mô tả ngắn nội dung hình.
 
 TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
 [
@@ -240,7 +243,9 @@ TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
     "illustration": {
       "needsImage": false,
       "imageType": "diagram",
-      "imagePrompt": "..."
+      "imagePrompt": "...",
+      "caption": "...",
+      "tikzCode": "..."
     }
   }
 ]`;
@@ -316,6 +321,7 @@ TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
             needsImage: true,
             imageType: item.illustration.imageType || 'diagram',
             imagePrompt: item.illustration.imagePrompt || `Sơ đồ minh họa cho: ${item.questionText}`,
+            tikzCode: sanitizeTikzCode(item.illustration.tikzCode),
             caption: `Minh họa: ${ku}`,
           }
         : undefined,
@@ -761,6 +767,7 @@ function synthesizeQuestionFromKU(
           needsImage: true,
           imageType,
           imagePrompt: `Biểu đồ sơ đồ minh họa kỹ thuật cho: ${cleanName}`,
+          tikzCode: lowerName.includes('osi') ? OSI_TIKZ_CODE : undefined,
           caption: `Sơ đồ trực quan: ${cleanName}`,
         }
       : undefined,

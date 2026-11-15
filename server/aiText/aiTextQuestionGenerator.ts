@@ -3,6 +3,7 @@ import {
   ChapterDistribution,
   ExamMatrix,
   KnowledgePackage,
+  QuestionIllustration,
   Question,
 } from '../../src/types';
 import {
@@ -11,6 +12,7 @@ import {
   callGeminiWithRetry,
   extractJsonFromText,
 } from '../geminiClient';
+import { sanitizeTikzCode } from '../../src/utils/tikzValidation';
 
 export function buildExactMatrixFromRequest(pkg: KnowledgePackage): ExamMatrix {
   const { difficulty, questionCount } = pkg.request;
@@ -82,6 +84,88 @@ interface RawGeneratedQuestionItem {
   sourceText?: string;
   generationReason?: string;
   sourceRefId?: string;
+  illustration?: {
+    needsImage?: boolean;
+    imageType?: QuestionIllustration['imageType'];
+    imagePrompt?: string;
+    tikzCode?: string;
+    caption?: string;
+  };
+}
+
+function normalizeSourceLabel(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+function getSectionSourceRefIds(
+  pkg: KnowledgePackage,
+  chapter: string,
+  section: string,
+  knowledgeUnit: string
+): string[] {
+  if (pkg.contentOrigin !== 'WEB') return [];
+
+  const normalizedChapter = normalizeSourceLabel(chapter);
+  const normalizedSection = normalizeSourceLabel(section);
+  const normalizedUnit = normalizeSourceLabel(knowledgeUnit);
+  const candidates = pkg.chapters.flatMap((chapterItem) =>
+    chapterItem.sections.map((sectionItem) => ({
+      chapterItem,
+      sectionItem,
+    }))
+  );
+  const chapterCandidates = normalizedChapter
+    ? candidates.filter(({ chapterItem }) => {
+        const title = normalizeSourceLabel(chapterItem.title);
+        return title.includes(normalizedChapter) || normalizedChapter.includes(title);
+      })
+    : [];
+  const relevantCandidates = chapterCandidates.length > 0 ? chapterCandidates : candidates;
+
+  const scoredCandidates = relevantCandidates
+    .map(({ sectionItem }) => {
+      const sectionNumber = normalizeSourceLabel(sectionItem.sectionNumber);
+      const sectionTitle = normalizeSourceLabel(sectionItem.title);
+      const matchesSection =
+        !!normalizedSection &&
+        ((sectionNumber &&
+          (normalizedSection === sectionNumber ||
+            normalizedSection.startsWith(`${sectionNumber} `))) ||
+          (sectionTitle &&
+            (normalizedSection.includes(sectionTitle) ||
+              sectionTitle.includes(normalizedSection))));
+      const matchesKnowledgeUnit =
+        !!normalizedUnit &&
+        sectionItem.concepts.some((concept) => {
+          const conceptName = normalizeSourceLabel(concept.name);
+          return (
+            conceptName &&
+            (normalizedUnit === conceptName ||
+              normalizedUnit.includes(conceptName) ||
+              conceptName.includes(normalizedUnit))
+          );
+        });
+
+      return {
+        sectionItem,
+        score: (matchesSection ? 2 : 0) + (matchesKnowledgeUnit ? 1 : 0),
+      };
+    })
+    .filter(({ score }) => score > 0);
+
+  if (scoredCandidates.length === 0) return [];
+
+  const bestScore = Math.max(...scoredCandidates.map(({ score }) => score));
+  const bestMatches = scoredCandidates.filter(({ score }) => score === bestScore);
+  const referenceSets = new Set(
+    bestMatches.map(({ sectionItem }) =>
+      [...new Set(sectionItem.sourceRefIds || [])].sort().join('|')
+    )
+  );
+
+  if (referenceSets.size !== 1) return [];
+
+  return [...new Set(bestMatches.flatMap(({ sectionItem }) => sectionItem.sourceRefIds || []))];
 }
 
 function mapRawItemToQuestion(
@@ -118,6 +202,7 @@ function mapRawItemToQuestion(
   const kuName = (item.knowledgeUnit || item.topic || section).trim();
   const sourceText = (item.sourceText || '').trim();
   const generationReason = (item.generationReason || '').trim();
+  const sectionSourceRefIds = getSectionSourceRefIds(pkg, chapter, section, kuName);
 
   // Match chunk & web source if WEB origin
   const matchedChunk =
@@ -127,10 +212,13 @@ function mapRawItemToQuestion(
         chapter.toLowerCase().includes(ch.chapterTitle.toLowerCase())
     ) || pkg.documentSource.chunks[0];
 
-  let matchedWebSource = pkg.webSources.find((s) => s.id === item.sourceRefId);
-  if (!matchedWebSource && pkg.contentOrigin === 'WEB' && pkg.webSources.length > 0) {
-    matchedWebSource = pkg.webSources[idx % pkg.webSources.length];
-  }
+  const matchedWebSource =
+    pkg.contentOrigin === 'WEB'
+      ? pkg.webSources.find(
+          (source) => source.id === item.sourceRefId && sectionSourceRefIds.includes(source.id)
+        ) ||
+        pkg.webSources.find((source) => sectionSourceRefIds.includes(source.id))
+      : undefined;
 
   return {
     id: `q-aitext-${Date.now()}-${idx + 1}-${Math.random().toString(36).slice(2, 6)}`,
@@ -156,6 +244,15 @@ function mapRawItemToQuestion(
       webSourceUrl: matchedWebSource?.url,
       retrievedAt: matchedWebSource?.retrievedAt,
     },
+    illustration: item.illustration?.needsImage
+      ? {
+          needsImage: true,
+          imageType: item.illustration.imageType || 'diagram',
+          imagePrompt: item.illustration.imagePrompt || `Hình minh họa cho: ${item.questionText || kuName}`,
+          tikzCode: sanitizeTikzCode(item.illustration.tikzCode),
+          caption: item.illustration.caption || `Minh họa: ${kuName}`,
+        }
+      : undefined,
     validation: {
       isValid: false,
       status: 'NEEDS_REVIEW',
@@ -182,7 +279,11 @@ export async function generateQuestionsFromKnowledge(
 ): Promise<Question[]> {
   const count = options.targetSlots ? options.targetSlots.length : pkg.request.questionCount;
   const knowledgeUnitsList = pkg.documentSource.knowledgeUnits
-    .map((ku) => `- [${ku.chapter} | ${ku.section}] ${ku.name}: ${ku.sourceText.slice(0, 200)}`)
+    .map((ku) => {
+      const sourceRefIds = getSectionSourceRefIds(pkg, ku.chapter, ku.section, ku.name);
+      const sourceNote = sourceRefIds.length > 0 ? ` [Nguồn web: ${sourceRefIds.join(', ')}]` : '';
+      return `- [${ku.chapter} | ${ku.section}] ${ku.name}: ${ku.sourceText.slice(0, 200)}${sourceNote}`;
+    })
     .join('\n');
 
   const sourceListText =
@@ -232,7 +333,9 @@ QUY TẮC BẮT BUỘC:
   }
 6. Trường "sourceText" phải là đoạn nội dung nguyên văn (ít nhất 25 ký tự) trích trực tiếp từ tài liệu học tập làm căn cứ tạo câu hỏi.
 7. Trường "generationReason" phải giải thích ngắn gọn câu hỏi này kiểm tra đơn vị kiến thức nào và tại sao quan trọng (ít nhất 20 ký tự).
-8. Ngôn ngữ: ${pkg.request.language}. Đối tượng: ${pkg.request.audience}.`;
+8. Nếu bộ tài liệu có nguồn Web, trường "sourceRefId" phải là ID của nguồn được liệt kê ngay cạnh đơn vị kiến thức tương ứng; không chọn nguồn khác mục chỉ để điền ID.
+9. Với biểu thức toán học, dùng LaTeX inline dạng $...$ khi phù hợp. Nếu câu hỏi cần sơ đồ, đồ thị hoặc hình học để trả lời, thêm illustration với needsImage = true và tikzCode chỉ gồm lệnh vẽ bên trong tikzpicture. Chỉ dùng draw, fill, node, coordinate, path, addplot và môi trường axis/scope; không dùng lệnh đọc/ghi tệp, định nghĩa macro hay lệnh hệ thống.
+10. Ngôn ngữ: ${pkg.request.language}. Đối tượng: ${pkg.request.audience}.`;
 
   const prompt = `TÀI LIỆU HỌC TẬP ĐÃ XÁC NHẬN (Chủ đề: ${pkg.topic}):
 """
@@ -288,6 +391,16 @@ Trả về JSON array gồm đúng ${count} phần tử câu hỏi.`;
                 sourceText: { type: Type.STRING },
                 generationReason: { type: Type.STRING },
                 sourceRefId: { type: Type.STRING },
+                illustration: {
+                  type: Type.OBJECT,
+                  properties: {
+                    needsImage: { type: Type.BOOLEAN },
+                    imageType: { type: Type.STRING },
+                    imagePrompt: { type: Type.STRING },
+                    tikzCode: { type: Type.STRING },
+                    caption: { type: Type.STRING },
+                  },
+                },
               },
               required: [
                 'questionText',
@@ -301,6 +414,7 @@ Trả về JSON array gồm đúng ${count} phần tử câu hỏi.`;
                 'knowledgeUnit',
                 'sourceText',
                 'generationReason',
+                ...(pkg.contentOrigin === 'WEB' ? ['sourceRefId'] : []),
               ],
             },
           },

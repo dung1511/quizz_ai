@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QuizSet, ExamPaperConfig } from '../types';
 import { exportExamApi, exportExamDocxApi } from '../services/api';
+import { buildExamLatex } from '../utils/latexExport';
 
 interface ExportPaperModalProps {
   quizSet: QuizSet;
@@ -27,7 +28,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
     columns: 1,
   });
 
-  const [formatType, setFormatType] = useState<'pdf' | 'docx'>('pdf');
+  const [formatType, setFormatType] = useState<'pdf' | 'docx' | 'tex'>('pdf');
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
@@ -77,6 +78,18 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
       } finally {
         setIsExportingDocx(false);
       }
+    } else if (formatType === 'tex') {
+      const blob = new Blob([buildExamLatex(quizSet, config)], {
+        type: 'application/x-tex;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `DeThi_${config.examCode || '001'}_${quizSet.title.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')}.tex`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else {
       // Export as HTML/PDF print file
       const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
@@ -105,7 +118,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                 XUẤT ĐỀ THI
               </h2>
               <p className="text-xs text-slate-500">
-                Xuất đề thi giấy chuẩn mẫu khảo thí • Hỗ trợ in trực tiếp và tải file Word DOCX
+                Xuất đề thi giấy • Hỗ trợ in, Word DOCX và mã LaTeX/TikZ để biên dịch bằng LaTeX Workshop
               </p>
             </div>
           </div>
@@ -130,7 +143,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Xem trước trang in ({quizSet.questions.length} câu)
+                {formatType === 'tex' ? 'Xem mã LaTeX' : `Xem trước trang in (${quizSet.questions.length} câu)`}
               </button>
             </div>
 
@@ -212,7 +225,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
                 Định dạng xuất
               </h4>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <label
                   className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-2 ${
                     formatType === 'pdf'
@@ -252,7 +265,32 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                     <span className="text-[10px] text-slate-500 font-normal">Mở bằng MS Word</span>
                   </div>
                 </label>
+
+                <label
+                  className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-2 ${
+                    formatType === 'tex'
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-semibold'
+                      : 'border-slate-200 bg-white hover:bg-slate-100/60 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="formatType"
+                    checked={formatType === 'tex'}
+                    onChange={() => setFormatType('tex')}
+                    className="text-indigo-600"
+                  />
+                  <div>
+                    <span className="block font-bold">LaTeX (.tex)</span>
+                    <span className="text-[10px] text-slate-500 font-normal">TikZ + LaTeX Workshop</span>
+                  </div>
+                </label>
               </div>
+              {formatType === 'tex' && (
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Tải mã đề thi để mở trong VS Code và biên dịch bằng LaTeX Workshop. Công thức và hình TikZ sẽ nằm trong tệp này.
+                </p>
+              )}
             </div>
 
             {/* 3. Các tùy chọn thông tin đề thi */}
@@ -345,7 +383,16 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
           {/* Right / Preview Window */}
           <div className="flex-1 bg-slate-200/80 p-4 sm:p-6 overflow-y-auto flex justify-center">
             <div className="w-full max-w-3xl bg-white shadow-lg rounded-sm min-h-full border border-slate-300 overflow-hidden flex flex-col">
-              {isLoading ? (
+              {formatType === 'tex' ? (
+                <div className="flex-1 overflow-auto p-4">
+                  <p className="mb-3 rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-900">
+                    Đây là mã nguồn LaTeX của đề. Xuất tệp .tex rồi dùng LaTeX Workshop để biên dịch PDF.
+                  </p>
+                  <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-4 text-[11px] leading-relaxed text-slate-100">
+                    {buildExamLatex(quizSet, config)}
+                  </pre>
+                </div>
+              ) : isLoading ? (
                 <div className="p-16 text-center text-slate-500 flex flex-col items-center justify-center h-full">
                   <span className="material-symbols-outlined text-[36px] animate-spin text-indigo-600 mb-2">
                     refresh
@@ -375,7 +422,9 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
           <div className="flex items-center gap-2.5">
             <button
               onClick={handlePrint}
-              className="px-4 py-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+              disabled={formatType === 'tex'}
+              title={formatType === 'tex' ? 'Hãy xuất tệp .tex và biên dịch bằng LaTeX Workshop' : undefined}
+              className="px-4 py-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-[18px]">print</span>
               🖨 In đề ngay
@@ -396,7 +445,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[18px]">
-                    {formatType === 'docx' ? 'article' : 'download'}
+                    {formatType === 'docx' ? 'article' : formatType === 'tex' ? 'code' : 'download'}
                   </span>
                   <span>Xuất đề ({formatType.toUpperCase()})</span>
                 </>

@@ -873,7 +873,7 @@ export const AiTextFlow: React.FC<AiTextFlowProps> = ({ onQuizCreated }) => {
           {knowledgePkg.contentOrigin === 'WEB' && knowledgePkg.webSources.length > 0 && (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Nguồn tài liệu Web đã đọc ({knowledgePkg.webSources.length})
+                Trang lý thuyết gốc dùng để biên soạn nội dung ({knowledgePkg.webSources.length})
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {knowledgePkg.webSources.map((src) => (

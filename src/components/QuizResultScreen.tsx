@@ -38,7 +38,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
       return {
         label: 'Khá tốt!',
         desc: 'Nắm vững phần lớn kiến thức cốt lõi, chỉ cần ôn lại một số câu vận dụng.',
-        color: 'from-[#3525cd] to-[#4f46e5]',
+        color: 'from-[#15803d] to-[#16a34a]',
         badgeBg: 'bg-[#e2dfff]',
         textColor: 'text-[#3323cc]',
       };
@@ -68,10 +68,10 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
       {/* Top Congratulatory Hero Card */}
       <div className="bg-white rounded-3xl border border-[#e2e4e8] p-6 sm:p-10 shadow-sm text-center space-y-6 relative overflow-hidden">
         {/* Decorative background glow */}
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-[#3525cd]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-b from-[#16a34a]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#f2f4f6] text-[#464555]">
-          <span className="material-symbols-outlined text-[16px] text-[#3525cd]">verified</span>
+          <span className="material-symbols-outlined text-[16px] text-[#15803d]">verified</span>
           <span>Báo cáo kết quả bài kiểm tra</span>
         </div>
 
@@ -86,8 +86,8 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
 
         {/* Score Circle / Badge */}
         <div className="flex flex-col items-center justify-center my-4">
-          <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-[#f2f4f6] to-white border-4 border-[#3525cd]/20 flex flex-col items-center justify-center shadow-lg shadow-[#3525cd]/10">
-            <span className="font-display text-4xl sm:text-5xl font-black text-[#3525cd] tracking-tight">
+          <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-[#f2f4f6] to-white border-4 border-[#16a34a]/20 flex flex-col items-center justify-center shadow-lg shadow-[#16a34a]/10">
+            <span className="font-display text-4xl sm:text-5xl font-black text-[#15803d] tracking-tight">
               {attempt.score}
             </span>
             <span className="text-xs font-bold text-[#777587] mt-0.5">Thang điểm 10</span>
@@ -149,7 +149,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
         {/* Category breakdown */}
         <div className="bg-white rounded-2xl border border-[#e2e4e8] p-6 shadow-xs space-y-4">
           <h3 className="font-display text-base font-bold text-[#191c1e] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#3525cd] text-[20px]">category</span>
+            <span className="material-symbols-outlined text-[#15803d] text-[20px]">category</span>
             Phân tích theo chủ đề kiến thức
           </h3>
 
@@ -168,7 +168,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
                       cat.accuracy >= 80
                         ? 'bg-[#006c49]'
                         : cat.accuracy >= 50
-                        ? 'bg-[#3525cd]'
+                        ? 'bg-[#15803d]'
                         : 'bg-[#ba1a1a]'
                     }`}
                     style={{ width: `${cat.accuracy}%` }}
@@ -203,7 +203,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
                         diff.difficulty === 'easy'
                           ? 'bg-[#006c49]'
                           : diff.difficulty === 'medium'
-                          ? 'bg-[#3525cd]'
+                          ? 'bg-[#15803d]'
                           : 'bg-[#b45309]'
                       }`}
                       style={{ width: `${acc}%` }}
@@ -221,7 +221,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
         <button
           onClick={onViewDetailedReview}
           id="btn-view-detailed-review"
-          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white font-bold text-sm shadow-md shadow-[#3525cd]/25 transition-all flex items-center justify-center gap-2"
+          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white font-bold text-sm shadow-md shadow-[#15803d]/25 transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[20px]">fact_check</span>
           <span>Xem đáp án & lời giải chi tiết</span>
@@ -230,7 +230,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
         <button
           onClick={onRetakeQuiz}
           id="btn-retake-quiz"
-          className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#e2e4e8] hover:border-[#3525cd] bg-white hover:bg-[#f7f9fb] font-semibold text-sm text-[#191c1e] transition-all flex items-center justify-center gap-2"
+          className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#e2e4e8] hover:border-[#15803d] bg-white hover:bg-[#f7f9fb] font-semibold text-sm text-[#191c1e] transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
           <span>Làm lại đề thi</span>

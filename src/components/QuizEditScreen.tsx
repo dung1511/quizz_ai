@@ -104,7 +104,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
           <button
             onClick={onCancel}
             id="btn-edit-back"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#464555] hover:text-[#3525cd] transition-colors mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#464555] hover:text-[#15803d] transition-colors mb-2"
           >
             <span className="material-symbols-outlined text-[16px]">arrow_back</span>
             <span>Quay lại bộ câu hỏi</span>
@@ -128,7 +128,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
           <button
             onClick={handleSaveAll}
             id="btn-save-quiz-edits"
-            className="px-5 py-2.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-1.5"
+            className="px-5 py-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-1.5"
           >
             <span className="material-symbols-outlined text-[18px]">save</span>
             <span>Lưu tất cả thay đổi</span>
@@ -145,7 +145,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
             id={`btn-select-edit-q-${idx + 1}`}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${
               idx === activeIdx
-                ? 'bg-[#3525cd] text-white shadow-xs'
+                ? 'bg-[#15803d] text-white shadow-xs'
                 : 'bg-white text-[#464555] border border-[#e2e4e8] hover:bg-[#f2f4f6]'
             }`}
           >
@@ -170,7 +170,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
           {/* Question Top Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e2e4e8]">
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded-md bg-[#3525cd]/10 text-[#3525cd] font-bold text-xs font-mono">
+              <span className="px-2.5 py-1 rounded-md bg-[#16a34a]/10 text-[#15803d] font-bold text-xs font-mono">
                 Câu {activeIdx + 1} / {questions.length}
               </span>
               <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
               onChange={(e) => handleUpdateActiveField('questionText', e.target.value)}
               rows={3}
               id="edit-question-text"
-              className="w-full p-3 text-sm font-medium text-[#191c1e] bg-[#f7f9fb] border border-[#e2e4e8] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#3525cd] focus:bg-white transition-all"
+              className="w-full p-3 text-sm font-medium text-[#191c1e] bg-[#f7f9fb] border border-[#e2e4e8] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#16a34a] focus:bg-white transition-all"
             />
           </div>
 
@@ -225,7 +225,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
               onChange={(e) => handleUpdateActiveField('topic', e.target.value)}
               placeholder="Ví dụ: Cơ chế nhân đôi ADN, Quy luật phân ly..."
               id="edit-question-topic"
-              className="w-full py-2 px-3 text-xs bg-[#f7f9fb] border border-[#e2e4e8] rounded-lg text-[#191c1e] focus:outline-hidden focus:ring-1 focus:ring-[#3525cd]"
+              className="w-full py-2 px-3 text-xs bg-[#f7f9fb] border border-[#e2e4e8] rounded-lg text-[#191c1e] focus:outline-hidden focus:ring-1 focus:ring-[#16a34a]"
             />
           </div>
 
@@ -256,7 +256,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
                       className={`w-6 h-6 rounded-md font-bold text-xs flex items-center justify-center shrink-0 transition-all ${
                         isCorrect
                           ? 'bg-[#006c49] text-white shadow-xs'
-                          : 'bg-[#f2f4f6] text-[#777587] hover:bg-[#3525cd] hover:text-white'
+                          : 'bg-[#f2f4f6] text-[#777587] hover:bg-[#15803d] hover:text-white'
                       }`}
                       title={`Đặt ${opt.key} làm đáp án đúng`}
                     >
@@ -301,7 +301,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
               onChange={(e) => handleUpdateActiveField('explanation', e.target.value)}
               rows={3}
               id="edit-question-explanation"
-              className="w-full p-3 text-sm text-[#191c1e] bg-[#f7f9fb] border border-[#e2e4e8] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#3525cd] focus:bg-white transition-all"
+              className="w-full p-3 text-sm text-[#191c1e] bg-[#f7f9fb] border border-[#e2e4e8] rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#16a34a] focus:bg-white transition-all"
             />
           </div>
 
@@ -316,7 +316,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
               onChange={(e) => handleUpdateActiveField('sourceQuote', e.target.value)}
               placeholder="Trích dẫn đoạn văn trong tài liệu chứng minh cho câu trả lời..."
               id="edit-question-quote"
-              className="w-full py-2 px-3 text-xs bg-[#f7f9fb] border border-[#e2e4e8] rounded-lg text-[#191c1e] focus:outline-hidden focus:ring-1 focus:ring-[#3525cd]"
+              className="w-full py-2 px-3 text-xs bg-[#f7f9fb] border border-[#e2e4e8] rounded-lg text-[#191c1e] focus:outline-hidden focus:ring-1 focus:ring-[#16a34a]"
             />
           </div>
 
@@ -330,7 +330,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-6 py-2.5 rounded-xl bg-[#3525cd] hover:bg-[#291cb0] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
+              className="px-6 py-2.5 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">check</span>
               <span>Lưu câu hỏi này</span>
