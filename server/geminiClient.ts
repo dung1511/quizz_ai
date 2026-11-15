@@ -1,12 +1,14 @@
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 
 export const AI_MODEL = 'gemini-4-hydrogen';
+export const FALLBACK_AI_MODEL = 'gemini-3.1-flash-lite';
 
 export class AiServiceError extends Error {
   statusCode: number;
   code: string;
   step: string;
   retryable: boolean;
+  retryAfterMs?: number;
 
   constructor(
     message: string,
@@ -15,6 +17,7 @@ export class AiServiceError extends Error {
       code?: string;
       step?: string;
       retryable?: boolean;
+      retryAfterMs?: number;
     } = {}
   ) {
     super(message);
@@ -23,6 +26,7 @@ export class AiServiceError extends Error {
     this.code = options.code ?? 'AI_ERROR';
     this.step = options.step ?? 'unknown';
     this.retryable = options.retryable ?? false;
+    this.retryAfterMs = options.retryAfterMs;
   }
 }
 
@@ -119,6 +123,19 @@ export function extractJsonFromText<T = unknown>(rawText: string, step: string):
   }
 }
 
+function parseRetryAfterMs(msg: string): number | undefined {
+  const secMatch =
+    msg.match(/retry\s+(?:in|after)\s+([\d.]+)\s*s/i) ||
+    msg.match(/"retryDelay"\s*:\s*"([\d.]+)s"/i);
+  if (secMatch) {
+    const secs = Number(secMatch[1]);
+    if (!Number.isNaN(secs) && secs > 0) {
+      return Math.ceil(secs * 1000) + 500;
+    }
+  }
+  return undefined;
+}
+
 function classifyProviderError(err: any, step: string): AiServiceError {
   if (err instanceof AiServiceError) {
     return err;
@@ -131,7 +148,13 @@ function classifyProviderError(err: any, step: string): AiServiceError {
   if (status === 429 || lower.includes('429') || lower.includes('resource_exhausted') || lower.includes('quota')) {
     return new AiServiceError(
       'Hệ thống AI đang quá tải hoặc vượt giới hạn tần suất (HTTP 429). Vui lòng thử lại sau ít giây.',
-      { statusCode: 429, code: 'RATE_LIMITED', step, retryable: true }
+      {
+        statusCode: 429,
+        code: 'RATE_LIMITED',
+        step,
+        retryable: true,
+        retryAfterMs: parseRetryAfterMs(msg),
+      }
     );
   }
 
@@ -193,21 +216,36 @@ export async function callGeminiWithRetry<T = GenerateContentResponse>(options: 
   step: string;
   timeoutMs?: number;
   maxRetries?: number;
-  fn: (ai: GoogleGenAI) => Promise<GenerateContentResponse>;
+  primaryModel?: string;
+  fallbackModel?: string | null;
+  fn: (ai: GoogleGenAI, model: string) => Promise<GenerateContentResponse>;
   transform?: (response: GenerateContentResponse) => T;
 }): Promise<T> {
-  const { step, timeoutMs = 45000, maxRetries = 2, fn, transform } = options;
+  const {
+    step,
+    timeoutMs = 45000,
+    maxRetries = 2,
+    primaryModel = AI_MODEL,
+    fallbackModel = FALLBACK_AI_MODEL,
+    fn,
+    transform,
+  } = options;
   const ai = requireGeminiClient(step);
 
   let lastError: AiServiceError | null = null;
+  let currentModel = primaryModel;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const startMs = Date.now();
     try {
-      console.log(`[QuizAI][${step}] Attempt ${attempt + 1}/${maxRetries + 1} starting...`);
-      const response = await withTimeout(fn(ai), timeoutMs, step);
+      console.log(
+        `[QuizAI][${step}] Attempt ${attempt + 1}/${maxRetries + 1} (${currentModel}) starting...`
+      );
+      const response = await withTimeout(fn(ai, currentModel), timeoutMs, step);
       const elapsed = Date.now() - startMs;
-      console.log(`[QuizAI][${step}] Attempt ${attempt + 1} succeeded in ${elapsed}ms.`);
+      console.log(
+        `[QuizAI][${step}] Attempt ${attempt + 1} (${currentModel}) succeeded in ${elapsed}ms.`
+      );
 
       if (transform) {
         return transform(response);
@@ -216,18 +254,36 @@ export async function callGeminiWithRetry<T = GenerateContentResponse>(options: 
     } catch (err: any) {
       const classified = classifyProviderError(err, step);
       lastError = classified;
+      const rawSnippet = String(err?.message || '').slice(0, 240);
       console.warn(
-        `[QuizAI][${step}] Attempt ${attempt + 1} failed (${classified.code}, HTTP ${classified.statusCode}): ${classified.message}`
+        `[QuizAI][${step}] Attempt ${attempt + 1} (${currentModel}) failed (${classified.code}, HTTP ${classified.statusCode}): ${rawSnippet || classified.message}`
       );
 
       if (!classified.retryable || attempt >= maxRetries) {
         throw classified;
       }
 
-      const backoffMs =
-        classified.code === 'RATE_LIMITED'
-          ? Math.min(12000, 3500 * Math.pow(2, attempt))
-          : Math.min(4000, 800 * Math.pow(2, attempt));
+      const shouldSwitchModel =
+        Boolean(fallbackModel) &&
+        currentModel !== fallbackModel &&
+        (classified.code === 'RATE_LIMITED' ||
+          classified.code === 'SERVICE_UNAVAILABLE' ||
+          classified.code === 'TIMEOUT');
+
+      if (shouldSwitchModel && fallbackModel) {
+        console.log(
+          `[QuizAI][${step}] Switching model from ${currentModel} to fallback ${fallbackModel}...`
+        );
+        currentModel = fallbackModel;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+
+      const backoffMs = classified.retryAfterMs
+        ? Math.min(18000, classified.retryAfterMs)
+        : classified.code === 'RATE_LIMITED'
+        ? Math.min(14000, 4000 * Math.pow(2, attempt))
+        : Math.min(4000, 800 * Math.pow(2, attempt));
       await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }
   }

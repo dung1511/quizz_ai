@@ -208,9 +208,9 @@ ${input.difficultyMode ? `Độ khó người dùng chọn bổ sung: ${input.di
     step: 'parse-request',
     timeoutMs: 45000,
     maxRetries: 2,
-    fn: (ai) =>
+    fn: (ai, model) =>
       ai.models.generateContent({
-        model: AI_MODEL,
+        model,
         contents: userContext,
         config: {
           systemInstruction,

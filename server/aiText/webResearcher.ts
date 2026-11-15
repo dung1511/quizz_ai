@@ -1,5 +1,5 @@
 import { ParsedQuizRequest, WebResearchSource } from '../../src/types';
-import { AI_MODEL, callGeminiWithRetry } from '../geminiClient';
+import { FALLBACK_AI_MODEL, callGeminiWithRetry } from '../geminiClient';
 
 export interface WebResearchProgress {
   phase: 'searching' | 'fetching' | 'filtering' | 'done' | 'fallback';
@@ -173,35 +173,88 @@ export function extractReadableTextFromHtml(html: string): { title?: string; tex
   return { title: pageTitle, text: plain };
 }
 
-function isUsefulAcademicText(text: string, topic: string): boolean {
+const STOPWORDS = new Set([
+  'cơ', 'bản', 'nâng', 'cao', 'nhập', 'môn', 'tổng', 'quan', 'về', 'và', 'cho',
+  'trong', 'của', 'các', 'tập', 'trung', 'kiến', 'thức', 'người', 'học', 'sinh',
+  'viên', 'năm', 'nhất', 'mới', 'bắt', 'đầu', 'cách', 'làm', 'hướng', 'dẫn',
+  'trắc', 'nghiệm', 'bài', 'thi', 'ôn', 'luyện', 'chủ', 'đề', 'môn', 'lĩnh', 'vực',
+  'the', 'and', 'for', 'with', 'from', 'into', 'basic', 'basics', 'intro', 'introduction',
+]);
+
+function extractMeaningfulTokens(input: string): string[] {
+  return Array.from(
+    new Set(
+      input
+        .toLowerCase()
+        .split(/[\s,.;:!?()[\]{}"'\/\\–—-]+/)
+        .map((t) => t.replace(/[^\p{L}\p{N}]/gu, ''))
+        .filter((t) => t.length >= 2 && !STOPWORDS.has(t))
+    )
+  );
+}
+
+function isUsefulAcademicText(
+  text: string,
+  pageTitle: string,
+  request: ParsedQuizRequest
+): boolean {
   if (!text || text.length < 250) return false;
   const lower = text.toLowerCase();
+  const titleLower = (pageTitle || '').toLowerCase();
+
   if (
     lower.includes('enable javascript') ||
     lower.includes('access denied') ||
     lower.includes('just a moment...') ||
     lower.includes('verify you are human') ||
     lower.includes('403 forbidden') ||
-    lower.includes('404 not found')
+    lower.includes('404 not found') ||
+    lower.includes('có thể đề cập đến:') ||
+    lower.includes('may refer to:') ||
+    titleLower.includes('(định hướng)') ||
+    titleLower.includes('(disambiguation)')
   ) {
     return false;
   }
 
-  // Ensure basic topical overlap
-  const tokens = topic
-    .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter((t) => t.length >= 2);
+  const leadAndTitle = `${titleLower} ${lower.slice(0, 1800)}`;
+  const topicTokens = extractMeaningfulTokens(request.topic);
+  const contextTokens = extractMeaningfulTokens(
+    `${request.subject} ${request.knowledgeAreas.join(' ')}`
+  );
 
-  if (tokens.length === 0) return true;
-  const matches = tokens.filter((t) => lower.includes(t));
-  return matches.length >= 1;
+  if (topicTokens.length === 0 && contextTokens.length === 0) return true;
+
+  const topicMatches = topicTokens.filter((t) => leadAndTitle.includes(t));
+  const contextMatches = contextTokens.filter((t) => leadAndTitle.includes(t));
+
+  // Must match at least 1 core topic token (if topicTokens exist)
+  if (topicTokens.length > 0 && topicMatches.length === 0) {
+    return false;
+  }
+
+  // For encyclopedic/Wikipedia pages, ensure the article title itself is about the topic or a key area
+  if (
+    titleLower.includes('wikipedia') &&
+    topicTokens.length > 0 &&
+    !topicTokens.some((t) => titleLower.includes(t)) &&
+    !extractMeaningfulTokens(request.knowledgeAreas.join(' ')).some((t) => titleLower.includes(t))
+  ) {
+    return false;
+  }
+
+  // If topic only had 1 token (e.g. "python"), require either >= 1 subject/knowledgeArea token too,
+  // or the token appears multiple times with academic/technical context (avoid roller coaster / snake pages)
+  const combinedMatches = new Set([...topicMatches, ...contextMatches]).size;
+  if (topicTokens.length >= 2) {
+    return topicMatches.length >= 2 || (topicMatches.length >= 1 && combinedMatches >= 2);
+  }
+  return combinedMatches >= 2 || (topicMatches.length >= 1 && contextTokens.length === 0);
 }
 
 async function fetchSingleWebPage(
   candidate: CandidateLink,
-  topic: string,
+  request: ParsedQuizRequest,
   timeoutMs: number = 5500
 ): Promise<WebResearchSource | null> {
   const controller = new AbortController();
@@ -214,7 +267,7 @@ async function fetchSingleWebPage(
       signal: controller.signal,
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (compatible; QuizAI-ResearchBot/1.0; +https://quizai.edu)',
+          'QuizAI-ResearchBot/1.0 (https://quizai.edu; contact@quizai.edu)',
         Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9',
       },
     });
@@ -246,7 +299,7 @@ async function fetchSingleWebPage(
       }
     }
 
-    if (!isUsefulAcademicText(extractedText, topic)) {
+    if (!isUsefulAcademicText(extractedText, extractedTitle, request)) {
       return null;
     }
 
@@ -270,6 +323,83 @@ async function fetchSingleWebPage(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function discoverWikipediaCandidates(
+  request: ParsedQuizRequest
+): Promise<CandidateLink[]> {
+  const coreTopicTokens = extractMeaningfulTokens(request.topic);
+  const queries = Array.from(
+    new Set(
+      [
+        request.topic,
+        coreTopicTokens.length > 0 && request.subject
+          ? `${coreTopicTokens.slice(0, 2).join(' ')} ${request.subject}`
+          : '',
+        ...request.knowledgeAreas.slice(0, 1),
+      ]
+        .map((q) => q.trim())
+        .filter((q) => q.length >= 2)
+    )
+  ).slice(0, 3);
+
+  const links: CandidateLink[] = [];
+  const seen = new Set<string>();
+
+  for (const query of queries) {
+    for (const lang of ['vi', 'en']) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
+      try {
+        const apiUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+          query
+        )}&srlimit=4&format=json`;
+        const res = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'QuizAI-ResearchBot/1.0 (https://quizai.edu)' },
+        });
+        if (!res.ok) continue;
+        const data = (await res.json()) as {
+          query?: { search?: { title?: string; snippet?: string }[] };
+        };
+        const results = data?.query?.search || [];
+        for (const item of results) {
+          const title = String(item.title || '').trim();
+          const snippet = String(item.snippet || '').replace(/<[^>]+>/g, ' ').toLowerCase();
+          if (!title) continue;
+          const titleLower = title.toLowerCase();
+          if (titleLower.includes('(định hướng)') || titleLower.includes('(disambiguation)')) {
+            continue;
+          }
+          // Pre-filter unrelated results: article title must match a core topic or knowledge-area token
+          const areaTokens = extractMeaningfulTokens(request.knowledgeAreas.join(' '));
+          const titleRelevant =
+            coreTopicTokens.length === 0 ||
+            coreTopicTokens.some((t) => titleLower.includes(t)) ||
+            areaTokens.some((t) => titleLower.includes(t));
+          if (!titleRelevant) {
+            continue;
+          }
+
+          const wikiUrl = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(
+            title.replace(/ /g, '_')
+          )}`;
+          if (!seen.has(wikiUrl)) {
+            seen.add(wikiUrl);
+            links.push({ url: wikiUrl, title: `${title} - Wikipedia` });
+          }
+        }
+      } catch {
+        // Ignore individual wiki lookup failure
+      } finally {
+        clearTimeout(timer);
+      }
+      if (links.length >= 5) break;
+    }
+    if (links.length >= 5) break;
+  }
+
+  return links;
 }
 
 export async function researchWebSources(
@@ -296,6 +426,7 @@ export async function researchWebSources(
   });
 
   let candidates: CandidateLink[] = [];
+  let searchWarning: string | undefined;
 
   try {
     const searchQueryPrompt = `Hãy tìm kiếm các nguồn tài liệu chính thức, giáo trình đại học, tài liệu kỹ thuật hoặc bách khoa học thuật uy tín nhất về chủ đề: "${request.topic}" (Môn học: ${request.subject}).
@@ -304,11 +435,13 @@ Tóm tắt ngắn gọn các khái niệm cốt lõi từ nguồn tìm được.
 
     const searchResponse = await callGeminiWithRetry({
       step: 'web-search-discovery',
-      timeoutMs: 15000,
+      timeoutMs: 12000,
       maxRetries: 0,
-      fn: (ai) =>
+      primaryModel: FALLBACK_AI_MODEL,
+      fallbackModel: null,
+      fn: (ai, model) =>
         ai.models.generateContent({
-          model: AI_MODEL,
+          model,
           contents: searchQueryPrompt,
           config: {
             tools: [{ googleSearch: {} }],
@@ -329,30 +462,25 @@ Tóm tắt ngắn gọn các khái niệm cốt lõi từ nguồn tìm được.
       candidates.push({ url: normalizedUrl, title });
     }
   } catch (err: any) {
-    console.warn(`[QuizAI][web-research] Google Search grounding unavailable: ${err?.message || err}`);
-    onProgress?.({
-      phase: 'fallback',
-      message: 'Không thể truy vấn tìm kiếm web, chuyển sang AI tự biên soạn nội dung.',
-      detail: err?.message,
-    });
-    return {
-      sources: [],
-      discoveredCount: 0,
-      fetchedCount: 0,
-      failureReason: err?.message || 'Dịch vụ tìm kiếm web tạm thời không khả dụng.',
-    };
+    searchWarning = err?.message;
+    console.warn(`[QuizAI][web-research] Google Search grounding unavailable: ${searchWarning}`);
+  }
+
+  if (candidates.length === 0) {
+    candidates = await discoverWikipediaCandidates(request);
   }
 
   if (candidates.length === 0) {
     onProgress?.({
       phase: 'fallback',
       message: 'Không tìm thấy liên kết web phù hợp. Chuyển sang chế độ AI tổng hợp.',
+      detail: searchWarning,
     });
     return {
       sources: [],
       discoveredCount: 0,
       fetchedCount: 0,
-      failureReason: 'Không tìm thấy nguồn web công khai phù hợp cho chủ đề này.',
+      failureReason: searchWarning || 'Không tìm thấy nguồn web công khai phù hợp cho chủ đề này.',
     };
   }
 
@@ -371,7 +499,7 @@ Tóm tắt ngắn gọn các khái niệm cốt lõi từ nguồn tìm được.
 
   // Fetch up to 5 pages concurrently with strict timeout
   const settled = await Promise.allSettled(
-    rankedCandidates.map((c) => fetchSingleWebPage(c, request.topic, 5500))
+    rankedCandidates.map((c) => fetchSingleWebPage(c, request, 5500))
   );
 
   const validSources: WebResearchSource[] = [];

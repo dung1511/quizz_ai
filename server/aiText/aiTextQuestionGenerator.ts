@@ -253,9 +253,9 @@ Trả về JSON array gồm đúng ${count} phần tử câu hỏi.`;
     step: options.targetSlots ? 'repair-questions' : 'generate-questions',
     timeoutMs: 75000,
     maxRetries: 2,
-    fn: (ai) =>
+    fn: (ai, model) =>
       ai.models.generateContent({
-        model: AI_MODEL,
+        model,
         contents: prompt,
         config: {
           systemInstruction,

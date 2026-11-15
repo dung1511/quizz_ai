@@ -14,6 +14,7 @@ import { ExamMatrixModal } from './ExamMatrixModal';
 import { buildExamMatrix } from '../utils/matrixUtils';
 import { extractDocumentApi, processDocumentApi } from '../services/api';
 import { AiTextFlow } from './AiTextFlow';
+import heroMagnifyingGlassImg from '../assets/images/hero_magnifying_glass_clean_1794755347367.jpg';
 
 interface UploadScreenProps {
   onStartGenerate: (config: {
@@ -70,8 +71,22 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [extractionSuccess, setExtractionSuccess] = useState<string | null>(null);
+  const [heroImageError, setHeroImageError] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToWorkspace = (targetTab?: 'upload' | 'text') => {
+    if (targetTab) {
+      setActiveTab(targetTab);
+      setExtractionError(null);
+    }
+    setTimeout(() => {
+      const el = document.getElementById('tao-de-workspace');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 40);
+  };
 
   // Check for binary corruption in pasted text
   const isPastedBinary =
@@ -239,83 +254,209 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
   const currentMatrix = buildExamMatrix(currentChapters, numQuestions, difficulty);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10">
-      {/* Hero Section */}
-      <div className="text-center space-y-3.5 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-semibold tracking-wide">
-          <span className="material-symbols-outlined text-[16px]">verified</span>
-          <span>Khảo thí AI thế hệ mới: 100% Truy xuất nguồn gốc & Chống bịa đặt</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-14 sm:space-y-16">
+      {/* Hero Section: Gentle, Approachable Copy + Prominent Magnifying Glass Visual */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch pt-2">
+        {/* Left Copy Column */}
+        <div className="lg:col-span-6 flex flex-col justify-center space-y-6">
+          <p className="font-brand text-sm font-semibold text-[#4f46e5] tracking-normal">
+            Học tập nhẹ nhàng · Khám phá kiến thức mỗi ngày
+          </p>
+
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-[3.25rem] font-extrabold text-slate-900 tracking-tight leading-[1.14] [text-wrap:balance]">
+            Biến tài liệu dài dòng thành{' '}
+            <span className="bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] bg-clip-text text-transparent animate-gradient-flow">
+              những giờ ôn tập đầy hứng khởi
+            </span>
+          </h1>
+
+          <p className="font-sans text-base sm:text-[17px] text-slate-600 leading-relaxed max-w-xl">
+            Cùng quizzAi soi rõ từng ý trọng tâm trong giáo trình, sắp xếp câu hỏi mạch lạc và biến mỗi lần tự kiểm tra thành một trải nghiệm nhẹ nhàng, thú vị.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3.5 pt-1">
+            <button
+              type="button"
+              onClick={() => scrollToWorkspace('upload')}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow text-white font-semibold text-sm sm:text-base shadow-md shadow-[#ff4d6d]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">upload_file</span>
+              <span>Bắt đầu từ tài liệu</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToWorkspace('text')}
+              className="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#4f46e5]/40 hover:text-[#4f46e5] text-slate-700 font-semibold text-sm sm:text-base shadow-2xs transition-all inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px] text-[#ff4d6d]">auto_awesome</span>
+              <span>Tạo nhanh theo chủ đề</span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-medium text-slate-500 pt-1">
+            <span>Hỗ trợ PDF, DOCX, TXT</span>
+            <span aria-hidden="true">·</span>
+            <span>Sinh đề theo yêu cầu tiếng Việt</span>
+            <span aria-hidden="true">·</span>
+            <span>Giải thích đáp án dễ hiểu</span>
+          </div>
         </div>
 
-        <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Hệ thống AI tự động tạo bài kiểm tra,{' '}
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-blue-600 to-emerald-600">
-            đề thi từ tài liệu học tập
-          </span>
-        </h1>
-
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-          Tải tài liệu PDF / DOCX / TXT hoặc dán nội dung. AI tự động phân tích cấu trúc chương mục, trích xuất đơn vị kiến thức, lập ma trận đề và biên soạn câu hỏi có minh chứng nguồn trang cụ thể.
-        </p>
-
-        {/* Feature Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
-            <span className="text-indigo-600 material-symbols-outlined text-[16px]">account_tree</span>
-            Phân tích Chương & Mục tự động
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
-            <span className="text-emerald-600 material-symbols-outlined text-[16px]">grid_on</span>
-            Ma trận đặc tả đề thi chuẩn
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
-            <span className="text-amber-600 material-symbols-outlined text-[16px]">menu_book</span>
-            Truy xuất nguồn trang & dòng văn bản
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
-            <span className="text-blue-600 material-symbols-outlined text-[16px]">print</span>
-            Xuất đề thi giấy chuẩn Đại học (PDF/DOCX)
-          </span>
+        {/* Right Prominent Magnifying Glass Visual */}
+        <div className="lg:col-span-6">
+          <div className="relative h-full min-h-[280px] sm:min-h-[360px] rounded-[32px] overflow-hidden bg-gradient-to-br from-[#fff1e6] via-[#eff6ff] to-[#fdf2f8] shadow-xl shadow-indigo-950/8">
+            {!heroImageError ? (
+              <img
+                src={heroMagnifyingGlassImg}
+                alt="Hình ảnh kính lúp quizzAi soi sáng kiến thức và thẻ câu hỏi học tập"
+                referrerPolicy="no-referrer"
+                onError={() => setHeroImageError(true)}
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center p-10 text-center gap-4 bg-gradient-to-br from-[#ffe4e6] via-[#fef3c7] to-[#dbeafe]">
+                <div className="w-24 h-24 rounded-3xl bg-white/90 shadow-md flex items-center justify-center text-[#ff4d6d]">
+                  <span className="material-symbols-outlined text-[52px]">search</span>
+                </div>
+                <p className="font-display font-bold text-lg text-slate-800">
+                  Soi rõ kiến thức trọng tâm cùng quizzAi
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Section Giới thiệu: Vibrant Eye-Catching Gradient Background Focused on Learning & Experience Quality */}
+      <section
+        id="gioi-thieu-trai-nghiem"
+        className="relative rounded-[32px] overflow-hidden p-7 sm:p-10 lg:p-12 text-white bg-gradient-to-br from-[#4f46e5] via-[#a855f7] to-[#ff4d6d] animate-gradient-flow shadow-xl shadow-indigo-950/15"
+      >
+        {/* Subtle luminous atmospheric accents */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#fbbf24]/30 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-[#2dd4bf]/25 blur-3xl"
+        />
+
+        <div className="relative z-10 space-y-8">
+          <div className="max-w-3xl space-y-3.5">
+            <p className="font-brand text-xs sm:text-sm font-semibold text-amber-200 tracking-wide">
+              Chất lượng trải nghiệm học tập
+            </p>
+            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight [text-wrap:balance]">
+              Học nhanh hơn, nhớ lâu hơn trên một không gian{' '}
+              <span className="bg-gradient-to-r from-[#fde047] via-[#6ee7b7] to-[#bae6fd] bg-clip-text text-transparent">
+                thoáng mắt và đầy cảm hứng
+              </span>
+            </h2>
+            <p className="font-sans text-sm sm:text-base text-white/92 leading-relaxed">
+              Thay vì cảm giác khô khan khi đối mặt với hàng chục trang tài liệu, quizzAi sắp xếp lại kiến thức thành từng mảnh ghép rõ ràng, chữ viết sắc nét và màu sắc tươi vui để mỗi phút ôn bài đều nhẹ nhàng.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="material-symbols-outlined text-[24px] text-amber-200">
+                  auto_stories
+                </span>
+                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">01</span>
+              </div>
+              <h3 className="font-brand text-lg font-bold text-white">
+                Thoáng mắt & Dễ đọc
+              </h3>
+              <p className="font-sans text-sm text-white/88 leading-relaxed">
+                Bo góc mềm mại, nhiều khoảng trắng cùng phông chữ tiếng Việt cân đối giúp bạn đọc lâu mà không bị rối mắt.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="material-symbols-outlined text-[24px] text-emerald-200">
+                  manage_search
+                </span>
+                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">02</span>
+              </div>
+              <h3 className="font-brand text-lg font-bold text-white">
+                Bám sát ý trọng tâm
+              </h3>
+              <p className="font-sans text-sm text-white/88 leading-relaxed">
+                Tự động chia chương mục hợp lý, giữ trọn nội dung chính xác và truy xuất rõ ràng từng trang tài liệu.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/14 backdrop-blur-md border border-white/20 p-5 sm:p-6 space-y-2.5 transition-transform duration-200 hover:-translate-y-0.5">
+              <div className="flex items-center justify-between">
+                <span className="material-symbols-outlined text-[24px] text-sky-200">
+                  sentiment_satisfied
+                </span>
+                <span className="font-brand text-sm font-bold text-white/75 tabular-nums">03</span>
+              </div>
+              <h3 className="font-brand text-lg font-bold text-white">
+                Luyện tập đầy hứng thú
+              </h3>
+              <p className="font-sans text-sm text-white/88 leading-relaxed">
+                Làm bài mượt mà, nhận giải thích cặn kẽ ngay lập tức hoặc in đề giấy gọn đẹp chỉ với một cú nhấp chuột.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Main Input Container Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Card Header with Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-2 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('upload');
-              setExtractionError(null);
-            }}
-            id="tab-upload-file"
-            className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'upload'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-2xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">upload_file</span>
-            <span>Tải tài liệu học tập (PDF / DOCX / TXT)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('text');
-              setExtractionError(null);
-            }}
-            id="tab-ai-prompt"
-            className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all whitespace-nowrap ${
-              activeTab === 'text'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-2xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-            <span>Tạo đề từ yêu cầu AI</span>
-          </button>
+      <section id="tao-de-workspace" className="scroll-mt-24 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-1">
+          <div>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Không gian tạo đề thi của bạn
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Chọn tải tài liệu có sẵn hoặc mô tả chủ đề để AI biên soạn nội dung và tạo đề ngay.
+            </p>
+          </div>
         </div>
+
+        <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-sm overflow-hidden">
+          {/* Card Header with Tabs */}
+          <div className="flex flex-wrap border-b border-slate-200/80 bg-slate-50/70 p-2.5 gap-2 text-xs sm:text-sm font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('upload');
+                setExtractionError(null);
+              }}
+              id="tab-upload-file"
+              className={`flex-1 sm:flex-none px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'upload'
+                  ? 'bg-gradient-to-r from-[#4f46e5] to-[#6366f1] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">upload_file</span>
+              <span>Tải tài liệu học tập (PDF / DOCX / TXT)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('text');
+                setExtractionError(null);
+              }}
+              id="tab-ai-prompt"
+              className={`flex-1 sm:flex-none px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'text'
+                  ? 'bg-gradient-to-r from-[#ff4d6d] to-[#ff8c42] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+              <span>Tạo đề từ yêu cầu AI</span>
+            </button>
+          </div>
 
         {/* Extraction Error Banner */}
         {extractionError && (
@@ -430,33 +571,32 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               </div>
 
               {/* Sample Documents Quick Click */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">school</span>
-                  Tài liệu mẫu thực tế (Test Cases 1 & 2):
+              <div className="space-y-2.5">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-[#4f46e5]">school</span>
+                  Tài liệu mẫu sẵn có để trải nghiệm nhanh:
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {SAMPLE_DOCUMENTS.map((sample) => (
                     <div
                       key={sample.id}
                       onClick={() => handleSelectSample(sample)}
                       id={`sample-doc-${sample.id}`}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer text-left ${
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer text-left ${
                         uploadedFile.name === sample.fileName
-                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-600'
-                          : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50'
+                          ? 'border-[#4f46e5] bg-indigo-50/45 shadow-xs ring-1 ring-[#4f46e5]/40'
+                          : 'border-slate-200 bg-white hover:border-[#ff8c42]/60 hover:bg-slate-50/70'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-indigo-100 text-indigo-700">
-                          {sample.category}
-                        </span>
-                        <span className="text-[11px] text-slate-400">{sample.fileSize}</span>
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#4f46e5] mb-1.5">
+                        <span>{sample.category}</span>
+                        <span aria-hidden="true" className="text-slate-300">·</span>
+                        <span className="text-slate-400 font-normal tabular-nums">{sample.fileSize}</span>
                       </div>
                       <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
                         {sample.fileName}
                       </h4>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
                         {sample.description}
                       </p>
                     </div>
@@ -610,7 +750,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                   onClick={handleStart}
                   disabled={isExtracting}
                   id="btn-start-generating"
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#ff4d6d] animate-gradient-flow disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
                   <span>Bắt đầu AI phân tích & Tạo đề thi</span>
@@ -619,7 +759,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
             </>
           )}
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Matrix Modal */}
       <ExamMatrixModal

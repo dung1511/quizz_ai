@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScreenId } from '../types';
 
 interface HeaderProps {
@@ -7,116 +7,237 @@ interface HeaderProps {
   quizTitle?: string;
   hasActiveQuiz: boolean;
   onOpenSampleModal?: () => void;
+  onStartWorkspace?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
   onNavigate,
-  hasActiveQuiz,
-  onOpenSampleModal
+  onOpenSampleModal,
+  onStartWorkspace,
 }) => {
-  const screensList: { id: ScreenId; label: string; icon: string; shortLabel: string }[] = [
-    { id: 'upload', label: '1. Tải tài liệu', shortLabel: 'Tải lên', icon: 'upload_file' },
-    { id: 'generating', label: '2. AI Xử lý', shortLabel: 'AI Xử lý', icon: 'smart_toy' },
-    { id: 'quiz-detail', label: '3. Bộ câu hỏi', shortLabel: 'Bộ đề', icon: 'quiz' },
-    { id: 'quiz-taking', label: '4. Làm bài thi', shortLabel: 'Thi trắc nghiệm', icon: 'assignment' },
-    { id: 'quiz-result', label: '5. Kết quả & Phân tích', shortLabel: 'Kết quả', icon: 'analytics' },
-    { id: 'quiz-review', label: '6. Lời giải chi tiết', shortLabel: 'Lời giải', icon: 'fact_check' },
-    { id: 'quiz-edit', label: '7. Chỉnh sửa', shortLabel: 'Biên tập', icon: 'edit_note' },
-    { id: 'library-history', label: '8. Kho tài liệu & Lịch sử', shortLabel: 'Lịch sử', icon: 'folder_open' },
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const screensList: { id: ScreenId; label: string; icon: string }[] = [
+    { id: 'upload', label: '1. Tải tài liệu', icon: 'upload_file' },
+    { id: 'generating', label: '2. AI Xử lý', icon: 'smart_toy' },
+    { id: 'quiz-detail', label: '3. Bộ câu hỏi', icon: 'quiz' },
+    { id: 'quiz-taking', label: '4. Làm bài thi', icon: 'assignment' },
+    { id: 'quiz-result', label: '5. Kết quả', icon: 'analytics' },
+    { id: 'quiz-review', label: '6. Lời giải', icon: 'fact_check' },
+    { id: 'quiz-edit', label: '7. Chỉnh sửa', icon: 'edit_note' },
+    { id: 'library-history', label: '8. Kho tài liệu', icon: 'folder_open' },
   ];
 
+  const handleGoHome = () => {
+    setMobileMenuOpen(false);
+    onNavigate('upload');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGoWorkspace = () => {
+    setMobileMenuOpen(false);
+    if (onStartWorkspace) {
+      onStartWorkspace();
+    } else {
+      onNavigate('upload');
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e2e4e8] shadow-xs">
-      {/* Primary Top Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand / Logo */}
-        <div 
-          onClick={() => onNavigate('upload')}
-          className="flex items-center gap-3 cursor-pointer group select-none"
+    <header className="sticky top-0 z-40 bg-white/92 backdrop-blur-md border-b border-slate-200/75">
+      {/* Primary 1-Row Top Bar: Brand — Simple Menu — Primary Action */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
+        {/* Zone 1: Brand wordmark "quizzAi" */}
+        <button
+          type="button"
+          onClick={handleGoHome}
           id="brand-logo-button"
+          className="flex items-center gap-2.5 cursor-pointer group select-none whitespace-nowrap shrink-0"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3525cd] to-[#4f46e5] flex items-center justify-center text-white shadow-md shadow-[#3525cd]/20 group-hover:scale-105 transition-transform duration-200">
-            <span className="material-symbols-outlined text-[24px]">auto_awesome</span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-display font-extrabold text-xl text-[#191c1e] tracking-tight">QuizAI</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#d1fae5] text-[#065f46] rounded-md border border-[#6cf8bb]/50">
-                PRO
-              </span>
-            </div>
-            <p className="text-[11px] text-[#777587] -mt-0.5 hidden sm:block">Trợ lý tạo đề thi thông minh</p>
-          </div>
-        </div>
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-200">
+            <span className="material-symbols-outlined text-[20px]">search</span>
+          </span>
+          <span className="font-brand font-extrabold text-2xl tracking-tight text-slate-900">
+            quizz
+            <span className="bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] bg-clip-text text-transparent">
+              Ai
+            </span>
+          </span>
+        </button>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {onOpenSampleModal && (
-            <button
-              onClick={onOpenSampleModal}
-              id="open-samples-header-btn"
-              className="px-3 py-1.5 text-xs sm:text-sm font-medium text-[#464555] hover:text-[#3525cd] hover:bg-[#f2f4f6] rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[18px]">menu_book</span>
-              <span className="hidden sm:inline">Tài liệu mẫu</span>
-            </button>
-          )}
-
+        {/* Zone 2: Simple single-line menu links */}
+        <nav
+          aria-label="Điều hướng chính"
+          className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600"
+        >
           <button
-            onClick={() => onNavigate('library-history')}
-            id="open-history-header-btn"
-            className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-              currentScreen === 'library-history'
-                ? 'bg-[#3525cd]/10 text-[#3525cd] font-semibold'
-                : 'text-[#464555] hover:text-[#3525cd] hover:bg-[#f2f4f6]'
+            type="button"
+            onClick={handleGoHome}
+            className={`whitespace-nowrap shrink-0 py-1 border-b-2 transition-colors cursor-pointer ${
+              currentScreen === 'upload'
+                ? 'text-[#4f46e5] border-[#ff4d6d] font-semibold'
+                : 'border-transparent hover:text-slate-900 hover:border-slate-300'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">history</span>
-            <span className="hidden sm:inline">Lịch sử</span>
+            Trang chủ
+          </button>
+          <button
+            type="button"
+            onClick={handleGoWorkspace}
+            className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ff4d6d] hover:border-[#ff4d6d]/60 transition-colors cursor-pointer"
+          >
+            Tạo đề ngay
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onNavigate('quiz-detail');
+            }}
+            className={`whitespace-nowrap shrink-0 py-1 border-b-2 transition-colors cursor-pointer ${
+              currentScreen === 'quiz-detail' ||
+              currentScreen === 'quiz-taking' ||
+              currentScreen === 'quiz-result' ||
+              currentScreen === 'quiz-review' ||
+              currentScreen === 'quiz-edit'
+                ? 'text-[#4f46e5] border-[#4f46e5] font-semibold'
+                : 'border-transparent hover:text-[#4f46e5] hover:border-[#4f46e5]/50'
+            }`}
+          >
+            Bộ câu hỏi
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onNavigate('library-history');
+            }}
+            id="open-history-header-btn"
+            className={`whitespace-nowrap shrink-0 py-1 border-b-2 transition-colors cursor-pointer ${
+              currentScreen === 'library-history'
+                ? 'text-[#00b894] border-[#00b894] font-semibold'
+                : 'border-transparent hover:text-[#00b894] hover:border-[#00b894]/50'
+            }`}
+          >
+            Kho tài liệu
+          </button>
+          {onOpenSampleModal && (
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenSampleModal();
+              }}
+              id="open-samples-header-btn"
+              className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ff8c42] hover:border-[#ff8c42]/50 transition-colors cursor-pointer"
+            >
+              Tài liệu mẫu
+            </button>
+          )}
+        </nav>
+
+        {/* Zone 3: Single Primary CTA + mobile menu toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleGoWorkspace}
+            id="create-new-quiz-btn"
+            className="px-4 py-2 text-xs sm:text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-[#ff4d6d] via-[#ff8c42] to-[#4f46e5] animate-gradient-flow shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            Bắt đầu ngay
           </button>
 
-          {currentScreen !== 'upload' && (
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label="Mở menu điều hướng"
+            className="md:hidden w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              {mobileMenuOpen ? 'close' : 'menu'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <button
+            type="button"
+            onClick={handleGoHome}
+            className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
+          >
+            Trang chủ
+          </button>
+          <button
+            type="button"
+            onClick={handleGoWorkspace}
+            className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
+          >
+            Tạo đề ngay
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onNavigate('quiz-detail');
+            }}
+            className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
+          >
+            Bộ câu hỏi
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onNavigate('library-history');
+            }}
+            className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
+          >
+            Kho tài liệu
+          </button>
+          {onOpenSampleModal && (
             <button
-              onClick={() => onNavigate('upload')}
-              id="create-new-quiz-btn"
-              className="px-3.5 py-1.5 text-xs sm:text-sm font-semibold bg-[#3525cd] hover:bg-[#291cb0] text-white rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenSampleModal();
+              }}
+              className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
             >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              <span>Tạo đề mới</span>
+              Tài liệu mẫu
             </button>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Screen Navigator Strip */}
-      <div className="bg-[#f2f4f6]/80 border-t border-[#e2e4e8]/60 overflow-x-auto no-scrollbar py-1.5 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-1 sm:gap-2 text-xs min-w-max">
-          <span className="text-[11px] font-semibold text-[#777587] uppercase tracking-wider mr-1 flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">view_carousel</span>
-            Màn hình:
-          </span>
-          {screensList.map((screen) => {
-            const isActive = currentScreen === screen.id;
-            return (
-              <button
-                key={screen.id}
-                onClick={() => onNavigate(screen.id)}
-                id={`nav-screen-${screen.id}`}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-[#3525cd] text-white shadow-xs font-semibold'
-                    : 'text-[#464555] hover:bg-white hover:text-[#191c1e] hover:shadow-2xs'
-                }`}
-                title={screen.label}
-              >
-                <span className="material-symbols-outlined text-[15px]">{screen.icon}</span>
-                <span>{screen.label}</span>
-              </button>
-            );
-          })}
+      {/* Contextual Workflow Bar: shown only when working inside a quiz/library screen */}
+      {currentScreen !== 'upload' && (
+        <div className="bg-slate-50/90 border-t border-slate-200/60 overflow-x-auto no-scrollbar py-1.5 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto flex items-center gap-1.5 text-xs min-w-max">
+            {screensList.map((screen) => {
+              const isActive = currentScreen === screen.id;
+              return (
+                <button
+                  key={screen.id}
+                  onClick={() => onNavigate(screen.id)}
+                  id={`nav-screen-${screen.id}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'bg-[#4f46e5] text-white shadow-xs font-semibold'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">{screen.icon}</span>
+                  <span>{screen.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 };

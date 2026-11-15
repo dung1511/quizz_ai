@@ -26,6 +26,7 @@ import { QuizReviewScreen } from './components/QuizReviewScreen';
 import { QuizEditScreen } from './components/QuizEditScreen';
 import { LibraryHistoryScreen } from './components/LibraryHistoryScreen';
 import { SampleModal } from './components/SampleModal';
+import { Footer } from './components/Footer';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('upload');
@@ -134,15 +135,26 @@ export default function App() {
     setCurrentScreen('upload');
   };
 
+  const handleStartWorkspace = () => {
+    setCurrentScreen('upload');
+    setTimeout(() => {
+      const el = document.getElementById('tao-de-workspace');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-600/15 selection:text-indigo-600">
-      {/* Top Header with Brand and View Switcher */}
+    <div className="min-h-screen bg-[#fafbfd] text-slate-900 flex flex-col font-sans selection:bg-[#ff4d6d]/15 selection:text-[#3525cd]">
+      {/* Top Header with Brand and Simple Menu */}
       <Header
         currentScreen={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
         quizTitle={activeQuizSet.title}
         hasActiveQuiz={!!activeQuizSet}
         onOpenSampleModal={() => setIsSampleModalOpen(true)}
+        onStartWorkspace={handleStartWorkspace}
       />
 
       {/* Main View Router */}
@@ -256,6 +268,13 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Clean Footer */}
+      <Footer
+        onNavigate={(screen) => setCurrentScreen(screen)}
+        onStartWorkspace={handleStartWorkspace}
+        onOpenSampleModal={() => setIsSampleModalOpen(true)}
+      />
 
       {/* Sample Modal for Testing */}
       <SampleModal

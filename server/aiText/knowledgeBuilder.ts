@@ -367,10 +367,10 @@ ${hasWebSources ? `DỮ LIỆU NGUỒN WEB ĐÃ TRUY XUẤT:\n${webContextBlock}
   const draft = await callGeminiWithRetry<RawKnowledgeDraft>({
     step: 'build-knowledge',
     timeoutMs: 75000,
-    maxRetries: 1,
-    fn: (ai) =>
+    maxRetries: 2,
+    fn: (ai, model) =>
       ai.models.generateContent({
-        model: AI_MODEL,
+        model,
         contents: userPrompt,
         config: {
           systemInstruction,
