@@ -12,6 +12,7 @@ interface GeneratingScreenProps {
   scopeChapterId?: string;
   strictSourceOnly: boolean;
   onComplete: (quizSet: QuizSet) => void;
+  onCancel?: () => void;
 }
 
 export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
@@ -24,6 +25,7 @@ export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
   scopeChapterId,
   strictSourceOnly,
   onComplete,
+  onCancel,
 }) => {
   const [progress, setProgress] = useState<number>(10);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -31,6 +33,7 @@ export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
   const [tipIndex, setTipIndex] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string>('Bắt đầu quy trình xử lý tài liệu...');
   const [isProcessing, setIsProcessing] = useState<boolean>(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hasTriggeredRef = useRef<boolean>(false);
 
   const steps = [
@@ -157,8 +160,8 @@ export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
         }, 600);
       } catch (err: any) {
         console.error('Pipeline error:', err);
-        setStatusMessage('Đang hoàn thiện các câu hỏi từ dữ liệu dự phòng...');
-        setProgress(100);
+        setErrorMessage(err?.message || 'Quá trình xử lý tài liệu và tạo đề thi gặp sự cố.');
+        setStatusMessage('Xử lý tài liệu thất bại.');
         setIsProcessing(false);
       }
     }
@@ -218,6 +221,27 @@ export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
           />
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-left space-y-3 text-xs">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0">error</span>
+            <div>
+              <p className="font-bold">Không thể hoàn tất tạo đề từ tài liệu</p>
+              <p className="mt-0.5">{errorMessage}</p>
+            </div>
+          </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 rounded-lg bg-white border border-rose-300 text-rose-800 font-bold hover:bg-rose-100 transition-colors"
+            >
+              Quay lại trang tải tài liệu
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Steps Checklist */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-6 text-left space-y-3.5">

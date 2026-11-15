@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScreenId,
   QuizSet,
@@ -15,6 +15,7 @@ import {
   RECENT_QUIZZES_LIST,
   SAMPLE_DOCUMENTS,
 } from './data/sampleData';
+import { listSavedQuizzesApi } from './services/api';
 import { Header } from './components/Header';
 import { UploadScreen } from './components/UploadScreen';
 import { GeneratingScreen } from './components/GeneratingScreen';
@@ -34,6 +35,18 @@ export default function App() {
   const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([INITIAL_QUIZ_ATTEMPT]);
   const [allDocuments, setAllDocuments] = useState<(SampleDocument | DocumentSource)[]>(SAMPLE_DOCUMENTS);
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    listSavedQuizzesApi().then((saved) => {
+      if (saved.length > 0) {
+        setAllQuizzes((prev) => {
+          const existingIds = new Set(prev.map((q) => q.id));
+          const uniqueSaved = saved.filter((q) => !existingIds.has(q.id));
+          return [...uniqueSaved, ...prev];
+        });
+      }
+    });
+  }, []);
 
   // Generation parameters state
   const [generationConfig, setGenerationConfig] = useState<{
@@ -142,6 +155,24 @@ export default function App() {
               setCurrentScreen('quiz-detail');
             }}
             onRegisterDocument={handleRegisterDocument}
+            onQuizCreated={(quiz) => {
+              handleGenerationComplete(quiz);
+              if (quiz.compiledKnowledgeText && quiz.chapters) {
+                handleRegisterDocument({
+                  id: quiz.documentId || `doc-ai-${quiz.id}`,
+                  title: quiz.title,
+                  fileName: quiz.documentName,
+                  fileType: 'txt',
+                  fileSize: `${Math.max(1, Math.round(quiz.compiledKnowledgeText.length / 1024))} KB`,
+                  pageCount: quiz.chapters.length || 1,
+                  status: 'READY',
+                  rawText: quiz.compiledKnowledgeText,
+                  chapters: quiz.chapters,
+                  chunks: [],
+                  knowledgeUnits: quiz.knowledgeUnits || [],
+                });
+              }
+            }}
           />
         )}
 
@@ -156,6 +187,7 @@ export default function App() {
             scopeChapterId={generationConfig.scopeChapterId}
             strictSourceOnly={generationConfig.strictSourceOnly}
             onComplete={handleGenerationComplete}
+            onCancel={() => setCurrentScreen('upload')}
           />
         )}
 

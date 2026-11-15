@@ -13,6 +13,21 @@ import { generatePaperExamHTML } from './server/exportService';
 import { generatePaperExamDOCX } from './server/docxExportService';
 import { extractTextFromBuffer, isBinaryZipOrDocx } from './server/documentExtractor';
 import { generateDocumentPrintHTML } from './server/documentPrintService';
+import { AiServiceError, getConfiguredApiKey } from './server/geminiClient';
+import { parseUserRequest } from './server/aiText/requestParser';
+import {
+  buildKnowledgeContent,
+  updateKnowledgePackageFromUserEdit,
+} from './server/aiText/knowledgeBuilder';
+import { generateAndValidateWithRepair } from './server/aiText/questionValidatorRepair';
+import {
+  getKnowledgePackage,
+  getQuizById,
+  getQuizSources,
+  listQuizzes,
+  saveQuizAndSources,
+} from './server/storage';
+import { QuizSet } from './src/types';
 
 dotenv.config();
 
@@ -30,7 +45,7 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
-      hasGeminiApiKey: Boolean(process.env.GEMINI_API_KEY),
+      hasGeminiApiKey: Boolean(getConfiguredApiKey()),
       timestamp: new Date().toISOString(),
     });
   });
@@ -250,6 +265,253 @@ async function startServer() {
       console.error('Error exporting docx exam:', err);
       res.status(500).json({ error: err.message || 'Failed to export DOCX exam' });
     }
+  });
+
+  // ==========================================
+  // AI_TEXT PIPELINE API ENDPOINTS
+  // ==========================================
+
+  // Step 2: Parse natural language request into normalized quiz specification
+  app.post(['/api/ai/parse-request', '/api/ai/parse-request/'], async (req, res) => {
+    try {
+      const { rawPrompt, quizTitle, questionCount, difficultyMode } = req.body || {};
+      const parsed = await parseUserRequest({
+        rawPrompt,
+        quizTitle,
+        questionCount: questionCount ? Number(questionCount) : undefined,
+        difficultyMode,
+      });
+      res.json(parsed);
+    } catch (err: any) {
+      const status = err instanceof AiServiceError ? err.statusCode : 500;
+      console.error('[QuizAI][parse-request] Error:', err);
+      res.status(status).json({
+        error: err.message || 'Không thể phân tích yêu cầu tạo đề.',
+        code: err instanceof AiServiceError ? err.code : 'PARSE_ERROR',
+        step: err instanceof AiServiceError ? err.step : 'parse-request',
+      });
+    }
+  });
+
+  // Step 3: Build learning knowledge content (Web Research -> Fallback AI Synthesis)
+  // Supports both SSE real-time step streaming (Accept: text/event-stream or body.stream=true) and JSON
+  app.post(['/api/ai/build-knowledge', '/api/ai/build-knowledge/'], async (req, res) => {
+    const wantsStream =
+      req.body?.stream === true ||
+      (req.headers.accept || '').includes('text/event-stream');
+
+    const { request: parsedRequest } = req.body || {};
+    if (!parsedRequest || !parsedRequest.topic) {
+      res.status(400).json({
+        error: 'Thiếu thông tin yêu cầu đã phân tích (request.topic).',
+        code: 'INVALID_REQUEST',
+        step: 'build-knowledge',
+      });
+      return;
+    }
+
+    if (wantsStream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+
+      const sendEvent = (eventName: string, data: unknown) => {
+        res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
+      try {
+        const pkg = await buildKnowledgeContent(parsedRequest, (stepEvent) => {
+          sendEvent('progress', stepEvent);
+        });
+        sendEvent('result', pkg);
+        res.end();
+      } catch (err: any) {
+        const status = err instanceof AiServiceError ? err.statusCode : 500;
+        console.error('[QuizAI][build-knowledge][stream] Error:', err);
+        sendEvent('error', {
+          statusCode: status,
+          error: err.message || 'Không thể xây dựng nội dung học tập.',
+          code: err instanceof AiServiceError ? err.code : 'BUILD_KNOWLEDGE_ERROR',
+          step: err instanceof AiServiceError ? err.step : 'build-knowledge',
+        });
+        res.end();
+      }
+      return;
+    }
+
+    try {
+      const pkg = await buildKnowledgeContent(parsedRequest);
+      res.json(pkg);
+    } catch (err: any) {
+      const status = err instanceof AiServiceError ? err.statusCode : 500;
+      console.error('[QuizAI][build-knowledge] Error:', err);
+      res.status(status).json({
+        error: err.message || 'Không thể xây dựng nội dung học tập.',
+        code: err instanceof AiServiceError ? err.code : 'BUILD_KNOWLEDGE_ERROR',
+        step: err instanceof AiServiceError ? err.step : 'build-knowledge',
+      });
+    }
+  });
+
+  // Step 4: Retrieve knowledge preview by ID
+  app.get('/api/ai/knowledge-preview/:id', (req, res) => {
+    const pkg = getKnowledgePackage(req.params.id);
+    if (!pkg) {
+      res.status(404).json({ error: 'Không tìm thấy nội dung học tập.' });
+      return;
+    }
+    res.json(pkg);
+  });
+
+  // Step 5 & 6: Generate questions strictly from confirmed knowledge, validate, repair, and save
+  app.post(
+    ['/api/ai/generate-from-knowledge', '/api/ai/generate-from-knowledge/'],
+    async (req, res) => {
+      const wantsStream =
+        req.body?.stream === true ||
+        (req.headers.accept || '').includes('text/event-stream');
+
+      const { knowledgePackageId, editedMarkdown, editedChapters, editedRequest } =
+        req.body || {};
+
+      if (!knowledgePackageId) {
+        res.status(400).json({
+          error: 'Thiếu mã nội dung học tập (knowledgePackageId).',
+          code: 'MISSING_KNOWLEDGE_ID',
+          step: 'generate-from-knowledge',
+        });
+        return;
+      }
+
+      const executeGeneration = async (
+        onProgress?: (ev: any) => void
+      ): Promise<QuizSet> => {
+        const confirmedPkg = updateKnowledgePackageFromUserEdit(knowledgePackageId, {
+          chapters: editedChapters,
+          compiledMarkdown: editedMarkdown,
+          request: editedRequest,
+        });
+
+        const { matrix, questions } = await generateAndValidateWithRepair(
+          confirmedPkg,
+          onProgress
+        );
+
+        onProgress?.({
+          step: 'saving',
+          status: 'running',
+          message: 'Đang lưu bộ đề, đáp án, nội dung học tập và nguồn tham khảo...',
+          timestamp: new Date().toISOString(),
+        });
+
+        const quizSet: QuizSet = {
+          id: `quiz-ai-${Date.now()}`,
+          title: confirmedPkg.request.quizTitle,
+          documentId: confirmedPkg.documentSource.id,
+          documentName: confirmedPkg.documentSource.fileName,
+          documentExcerpt: confirmedPkg.compiledMarkdown.slice(0, 200),
+          createdAt: new Date().toISOString(),
+          totalQuestions: questions.length,
+          recommendedMinutes: Math.max(5, Math.round(questions.length * 1.5)),
+          difficulty: confirmedPkg.request.difficultyMode,
+          questionType: 'multiple_choice',
+          quizStyle: 'standard',
+          matrix,
+          chapters: confirmedPkg.documentSource.chapters,
+          knowledgeUnits: confirmedPkg.documentSource.knowledgeUnits,
+          questions,
+          rawDocumentText: confirmedPkg.compiledMarkdown,
+          originType: 'AI_TEXT',
+          aiRequest: confirmedPkg.request,
+          knowledgePackageId: confirmedPkg.id,
+          contentOrigin: confirmedPkg.contentOrigin,
+          originNotice: confirmedPkg.originNotice,
+          freshnessWarning: confirmedPkg.freshnessWarning,
+          webSources: confirmedPkg.webSources,
+          compiledKnowledgeText: confirmedPkg.compiledMarkdown,
+        };
+
+        saveQuizAndSources(quizSet, confirmedPkg);
+
+        onProgress?.({
+          step: 'saving',
+          status: 'completed',
+          message: `Đã lưu thành công bộ đề "${quizSet.title}" (${quizSet.totalQuestions} câu).`,
+          timestamp: new Date().toISOString(),
+        });
+
+        return quizSet;
+      };
+
+      if (wantsStream) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders?.();
+
+        const sendEvent = (eventName: string, data: unknown) => {
+          res.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+        };
+
+        try {
+          const quizSet = await executeGeneration((stepEvent) => {
+            sendEvent('progress', stepEvent);
+          });
+          sendEvent('result', quizSet);
+          res.end();
+        } catch (err: any) {
+          const status = err instanceof AiServiceError ? err.statusCode : 500;
+          console.error('[QuizAI][generate-from-knowledge][stream] Error:', err);
+          sendEvent('error', {
+            statusCode: status,
+            error: err.message || 'Không thể tạo bộ đề trắc nghiệm.',
+            code: err instanceof AiServiceError ? err.code : 'GENERATE_ERROR',
+            step: err instanceof AiServiceError ? err.step : 'generate-from-knowledge',
+          });
+          res.end();
+        }
+        return;
+      }
+
+      try {
+        const quizSet = await executeGeneration();
+        res.json(quizSet);
+      } catch (err: any) {
+        const status = err instanceof AiServiceError ? err.statusCode : 500;
+        console.error('[QuizAI][generate-from-knowledge] Error:', err);
+        res.status(status).json({
+          error: err.message || 'Không thể tạo bộ đề trắc nghiệm.',
+          code: err instanceof AiServiceError ? err.code : 'GENERATE_ERROR',
+          step: err instanceof AiServiceError ? err.step : 'generate-from-knowledge',
+        });
+      }
+    }
+  );
+
+  // List saved AI_TEXT quizzes
+  app.get('/api/quizzes', (req, res) => {
+    res.json({ quizzes: listQuizzes() });
+  });
+
+  // Get single quiz by ID
+  app.get('/api/quizzes/:id', (req, res) => {
+    const quiz = getQuizById(req.params.id);
+    if (!quiz) {
+      res.status(404).json({ error: 'Không tìm thấy bộ đề.' });
+      return;
+    }
+    res.json(quiz);
+  });
+
+  // Get quiz sources & knowledge links
+  app.get(['/api/quizzes/:id/sources', '/api/quizzes/:id/sources/'], (req, res) => {
+    const sources = getQuizSources(req.params.id);
+    if (!sources) {
+      res.status(404).json({ error: 'Không tìm thấy nguồn của bộ đề.' });
+      return;
+    }
+    res.json(sources);
   });
 
   // ==========================================

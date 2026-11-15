@@ -23,6 +23,7 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
   const [filterChapter, setFilterChapter] = useState<string>('all');
   const [expandedExplanations, setExpandedExplanations] = useState<Record<string, boolean>>({});
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
+  const [showCompiledKnowledge, setShowCompiledKnowledge] = useState<boolean>(false);
 
   // Modals state
   const [selectedSourceQuestion, setSelectedSourceQuestion] = useState<Question | null>(null);
@@ -126,12 +127,29 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
           <div className="space-y-2.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700">
-                Đề thi trắc nghiệm AI
+                {quizSet.originType === 'AI_TEXT' ? 'Đề AI theo yêu cầu' : 'Đề thi trắc nghiệm AI'}
               </span>
-              <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">verified</span>
-                100% Bám sát tài liệu
-              </span>
+              {quizSet.originType === 'AI_TEXT' ? (
+                <span
+                  className={`px-2.5 py-0.5 rounded-md text-xs font-bold flex items-center gap-1 ${
+                    quizSet.contentOrigin === 'WEB'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[14px]">
+                    {quizSet.contentOrigin === 'WEB' ? 'public' : 'smart_toy'}
+                  </span>
+                  {quizSet.contentOrigin === 'WEB'
+                    ? `Nguồn Web thực tế (${quizSet.webSources?.length || 0})`
+                    : 'Nội dung AI tổng hợp'}
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">verified</span>
+                  100% Bám sát tài liệu
+                </span>
+              )}
               <span className="text-xs text-slate-400">Tạo lúc: {quizSet.createdAt}</span>
             </div>
 
@@ -280,6 +298,80 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
           )}
         </div>
       </div>
+
+      {/* AI_TEXT Knowledge & Reference Sources Panel */}
+      {quizSet.originType === 'AI_TEXT' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[18px] text-indigo-600">
+                  library_books
+                </span>
+                <span>Tài liệu học tập & Nguồn tham khảo của bộ đề</span>
+              </h2>
+              {quizSet.originNotice && (
+                <p className="text-xs text-slate-600">{quizSet.originNotice}</p>
+              )}
+              {quizSet.freshnessWarning && (
+                <p className="text-xs text-amber-800 font-medium">
+                  Lưu ý: {quizSet.freshnessWarning}
+                </p>
+              )}
+            </div>
+
+            {quizSet.compiledKnowledgeText && (
+              <button
+                type="button"
+                onClick={() => setShowCompiledKnowledge((v) => !v)}
+                className="px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {showCompiledKnowledge ? 'expand_less' : 'menu_book'}
+                </span>
+                <span>
+                  {showCompiledKnowledge
+                    ? 'Thu gọn nội dung đã biên soạn'
+                    : 'Xem nội dung học tập đã biên soạn'}
+                </span>
+              </button>
+            )}
+          </div>
+
+          {quizSet.webSources && quizSet.webSources.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {quizSet.webSources.map((src) => (
+                <div
+                  key={src.id}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1"
+                >
+                  <a
+                    href={src.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-indigo-700 hover:underline line-clamp-1 flex items-center gap-1"
+                  >
+                    <span className="truncate">{src.title}</span>
+                    <span className="material-symbols-outlined text-[14px] shrink-0">
+                      open_in_new
+                    </span>
+                  </a>
+                  <p className="text-[11px] text-slate-500">
+                    {src.domain} · Truy xuất:{' '}
+                    {new Date(src.retrievedAt).toLocaleString('vi-VN')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showCompiledKnowledge && quizSet.compiledKnowledgeText && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 max-h-96 overflow-y-auto text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">
+              {quizSet.compiledKnowledgeText}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Question Cards List */}
       <div className="space-y-4">

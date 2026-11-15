@@ -13,6 +13,7 @@ import { SAMPLE_DOCUMENTS, RECENT_QUIZZES_LIST } from '../data/sampleData';
 import { ExamMatrixModal } from './ExamMatrixModal';
 import { buildExamMatrix } from '../utils/matrixUtils';
 import { extractDocumentApi, processDocumentApi } from '../services/api';
+import { AiTextFlow } from './AiTextFlow';
 
 interface UploadScreenProps {
   onStartGenerate: (config: {
@@ -27,12 +28,14 @@ interface UploadScreenProps {
   }) => void;
   onSelectRecentQuiz: (quiz: QuizSet) => void;
   onRegisterDocument?: (doc: DocumentSource | SampleDocument) => void;
+  onQuizCreated?: (quiz: QuizSet) => void;
 }
 
 export const UploadScreen: React.FC<UploadScreenProps> = ({
   onStartGenerate,
   onSelectRecentQuiz,
   onRegisterDocument,
+  onQuizCreated,
 }) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'text'>('upload');
   const [selectedSample, setSelectedSample] = useState<SampleDocument>(SAMPLE_DOCUMENTS[0]);
@@ -302,15 +305,15 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               setActiveTab('text');
               setExtractionError(null);
             }}
-            id="tab-paste-text"
-            className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all ${
+            id="tab-ai-prompt"
+            className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all whitespace-nowrap ${
               activeTab === 'text'
                 ? 'border-indigo-600 text-indigo-700 bg-white shadow-2xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">edit_note</span>
-            <span>Dán văn bản trực tiếp</span>
+            <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+            <span>Tạo đề từ yêu cầu AI</span>
           </button>
         </div>
 
@@ -462,192 +465,159 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Nội dung tài liệu / Giáo trình / Đề cương
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPastedText(SAMPLE_DOCUMENTS[0].content);
-                    setExtractionError(null);
-                  }}
-                  className="text-xs text-indigo-600 hover:underline flex items-center gap-1 font-semibold"
-                >
-                  <span className="material-symbols-outlined text-[14px]">format_quote</span>
-                  Dán nội dung giáo trình CSDL.pdf mẫu
-                </button>
-              </div>
-
-              {isPastedBinary && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">
-                    warning
-                  </span>
-                  <div>
-                    <strong>Cảnh báo chuỗi nhị phân:</strong> Văn bản bạn dán có chứa tiền tố nhị phân{' '}
-                    <code>PK.../[Content_Types].xml</code> của file DOCX nén. Vui lòng chuyển sang tab{' '}
-                    <strong>"Tải tài liệu học tập"</strong> để hệ thống tự động giải nén qua Mammoth, hoặc chỉ dán nội dung chữ thuần túy.
-                  </div>
-                </div>
-              )}
-
-              <textarea
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                placeholder="Dán toàn bộ nội dung giáo trình, chương sách hoặc tài liệu học tập vào đây để AI trích xuất cấu trúc và tạo đề..."
-                rows={8}
-                id="pasted-content-textarea"
-                className={`w-full p-4 text-xs sm:text-sm text-slate-900 bg-slate-50 border rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all resize-y leading-relaxed font-mono ${
-                  isPastedBinary ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'
-                }`}
-              />
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{pastedText.length.toLocaleString('vi-VN')} ký tự</span>
-                <span>Chuẩn hóa Unicode tiếng Việt tự động</span>
-              </div>
-            </div>
+            <AiTextFlow
+              onQuizCreated={(quiz) => {
+                if (onQuizCreated) {
+                  onQuizCreated(quiz);
+                } else {
+                  onSelectRecentQuiz(quiz);
+                }
+              }}
+            />
           )}
 
-          {/* Structure Detection & Knowledge Unit Pre-Analysis */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[18px] text-indigo-600">account_tree</span>
-                Cấu trúc chương mục & Đơn vị kiến thức phát hiện trong tài liệu:
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMatrixModalOpen(true)}
-                className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">grid_view</span>
-                Xem ma trận đặc tả đề thi
-              </button>
-            </div>
+          {activeTab === 'upload' && (
+            <>
+              {/* Structure Detection & Knowledge Unit Pre-Analysis */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-indigo-600">account_tree</span>
+                    Cấu trúc chương mục & Đơn vị kiến thức phát hiện trong tài liệu:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMatrixModalOpen(true)}
+                    className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                    Xem ma trận đặc tả đề thi
+                  </button>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-              {currentChapters.map((chap, idx) => (
-                <div
-                  key={`${chap.id || 'chap'}-${idx}`}
-                  className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-indigo-600 text-[11px]">Chương {idx + 1}</span>
-                    <span className="text-[10px] text-slate-400">Trang {chap.pageStart} - {chap.pageEnd}</span>
-                  </div>
-                  <h5 className="font-bold text-slate-900 text-xs line-clamp-1">{chap.title}</h5>
-                  <div className="space-y-0.5 pt-1 border-t border-slate-100 text-[11px] text-slate-600">
-                    {chap.sections.map((sec, sIdx) => (
-                      <div key={`${sec.id || 'sec'}-${sIdx}`} className="truncate flex items-center gap-1">
-                        <span className="text-slate-400">•</span>
-                        <span>{sec.sectionNumber} {sec.title}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {currentChapters.map((chap, idx) => (
+                    <div
+                      key={`${chap.id || 'chap'}-${idx}`}
+                      className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-600 text-[11px]">Chương {idx + 1}</span>
+                        <span className="text-[10px] text-slate-400">Trang {chap.pageStart} - {chap.pageEnd}</span>
                       </div>
+                      <h5 className="font-bold text-slate-900 text-xs line-clamp-1">{chap.title}</h5>
+                      <div className="space-y-0.5 pt-1 border-t border-slate-100 text-[11px] text-slate-600">
+                        {chap.sections.map((sec, sIdx) => (
+                          <div key={`${sec.id || 'sec'}-${sIdx}`} className="truncate flex items-center gap-1">
+                            <span className="text-slate-400">•</span>
+                            <span>{sec.sectionNumber} {sec.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generator Controls Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                {/* Number of Questions */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span>Số lượng câu hỏi</span>
+                    <span className="text-indigo-600 font-extrabold">{numQuestions} câu</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[5, 10, 20, 30].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setNumQuestions(num)}
+                        className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                          numQuestions === num
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {num}
+                      </button>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Generator Controls Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-            {/* Number of Questions */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>Số lượng câu hỏi</span>
-                <span className="text-indigo-600 font-extrabold">{numQuestions} câu</span>
-              </label>
-              <div className="flex items-center gap-2">
-                {[5, 10, 20, 30].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setNumQuestions(num)}
-                    className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                      numQuestions === num
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
+                {/* Difficulty */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Mức độ phân hóa
+                  </label>
+                  <select
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
                   >
-                    {num}
-                  </button>
-                ))}
+                    <option value="medium">Tổng hợp (Nhận biết - Thông hiểu - Vận dụng)</option>
+                    <option value="easy">Nhận biết & Thông hiểu (Cơ bản)</option>
+                    <option value="hard">Vận dụng & Vận dụng cao (Nâng cao)</option>
+                  </select>
+                </div>
+
+                {/* Scope / Chapters */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Phạm vi kiến thức
+                  </label>
+                  <select
+                    value={scopeChapterId}
+                    onChange={(e) => setScopeChapterId(e.target.value)}
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
+                  >
+                    <option value="all">Toàn bộ tài liệu (Theo ma trận)</option>
+                    {currentChapters.map((chap, idx) => (
+                      <option key={`${chap.id || 'chap'}-${idx}`} value={chap.id}>
+                        Chỉ {chap.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Strict Source Guarantee */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Chế độ kiểm định nguồn
+                  </label>
+                  <label className="flex items-center gap-2 p-2 bg-emerald-50/70 border border-emerald-200 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={strictSourceOnly}
+                      onChange={(e) => setStrictSourceOnly(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-[11px] font-bold text-emerald-900 leading-tight">
+                      Chống bịa đặt (Chỉ sinh từ nguồn tài liệu gốc)
+                    </span>
+                  </label>
+                </div>
               </div>
-            </div>
 
-            {/* Difficulty */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                Mức độ phân hóa
-              </label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
-              >
-                <option value="medium">Tổng hợp (Nhận biết - Thông hiểu - Vận dụng)</option>
-                <option value="easy">Nhận biết & Thông hiểu (Cơ bản)</option>
-                <option value="hard">Vận dụng & Vận dụng cao (Nâng cao)</option>
-              </select>
-            </div>
+              {/* Action Button */}
+              <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px] text-indigo-600">lock_reset</span>
+                  <span>100% câu hỏi được lập từ ma trận và trích xuất nguồn đối soát</span>
+                </div>
 
-            {/* Scope / Chapters */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                Phạm vi kiến thức
-              </label>
-              <select
-                value={scopeChapterId}
-                onChange={(e) => setScopeChapterId(e.target.value)}
-                className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
-              >
-                <option value="all">Toàn bộ tài liệu (Theo ma trận)</option>
-                {currentChapters.map((chap, idx) => (
-                  <option key={`${chap.id || 'chap'}-${idx}`} value={chap.id}>
-                    Chỉ {chap.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Strict Source Guarantee */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                Chế độ kiểm định nguồn
-              </label>
-              <label className="flex items-center gap-2 p-2 bg-emerald-50/70 border border-emerald-200 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={strictSourceOnly}
-                  onChange={(e) => setStrictSourceOnly(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <span className="text-[11px] font-bold text-emerald-900 leading-tight">
-                  Chống bịa đặt (Chỉ sinh từ nguồn tài liệu gốc)
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-slate-500 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[18px] text-indigo-600">lock_reset</span>
-              <span>100% câu hỏi được lập từ ma trận và trích xuất nguồn đối soát</span>
-            </div>
-
-            <button
-              onClick={handleStart}
-              disabled={isExtracting || (activeTab === 'text' && isPastedBinary)}
-              id="btn-start-generating"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-              <span>Bắt đầu AI phân tích & Tạo đề thi</span>
-            </button>
-          </div>
+                <button
+                  onClick={handleStart}
+                  disabled={isExtracting}
+                  id="btn-start-generating"
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                  <span>Bắt đầu AI phân tích & Tạo đề thi</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

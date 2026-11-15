@@ -6,6 +6,10 @@ import {
   DifficultyLevel,
   ExamPaperConfig,
   SampleDocument,
+  ParsedQuizRequest,
+  KnowledgePackage,
+  KnowledgeChapterItem,
+  PipelineStepEvent,
 } from '../types';
 
 /**
@@ -230,4 +234,141 @@ export async function printDocumentApi(
 
   const data = await res.json();
   return data.html;
+}
+
+// ==========================================
+// AI_TEXT PIPELINE CLIENT APIs
+// ==========================================
+
+async function consumeSsePost<T>(
+  url: string,
+  payload: Record<string, unknown>,
+  onProgress?: (event: PipelineStepEvent) => void
+): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({ ...payload, stream: true }),
+  });
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Máy chủ trả về mã lỗi ${res.status}`);
+  }
+
+  if (!contentType.includes('text/event-stream') || !res.body) {
+    return (await res.json()) as T;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let finalResult: T | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const rawEvents = buffer.split('\n\n');
+    buffer = rawEvents.pop() || '';
+
+    for (const rawEvent of rawEvents) {
+      const lines = rawEvent.split('\n');
+      let eventName = 'message';
+      let dataLine = '';
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          dataLine += line.slice(5).trim();
+        }
+      }
+
+      if (!dataLine) continue;
+      const parsed = JSON.parse(dataLine);
+
+      if (eventName === 'progress') {
+        onProgress?.(parsed as PipelineStepEvent);
+      } else if (eventName === 'error') {
+        throw new Error(parsed.error || 'Quá trình xử lý AI gặp sự cố.');
+      } else if (eventName === 'result') {
+        finalResult = parsed as T;
+      }
+    }
+  }
+
+  if (!finalResult) {
+    throw new Error('Kết nối stream kết thúc nhưng không nhận được kết quả hoàn chỉnh.');
+  }
+
+  return finalResult;
+}
+
+export async function parseAiRequestApi(params: {
+  rawPrompt: string;
+  quizTitle?: string;
+  questionCount?: number;
+  difficultyMode?: DifficultyLevel;
+}): Promise<ParsedQuizRequest> {
+  const res = await fetch('/api/ai/parse-request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Lỗi phân tích yêu cầu (${res.status})`);
+  }
+
+  return (await res.json()) as ParsedQuizRequest;
+}
+
+export async function buildKnowledgeStreamApi(
+  request: ParsedQuizRequest,
+  onProgress?: (event: PipelineStepEvent) => void
+): Promise<KnowledgePackage> {
+  return consumeSsePost<KnowledgePackage>(
+    '/api/ai/build-knowledge',
+    { request },
+    onProgress
+  );
+}
+
+export async function getKnowledgePreviewApi(id: string): Promise<KnowledgePackage> {
+  const res = await fetch(`/api/ai/knowledge-preview/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Không tìm thấy nội dung học tập (${res.status})`);
+  }
+  return (await res.json()) as KnowledgePackage;
+}
+
+export async function generateFromKnowledgeStreamApi(
+  params: {
+    knowledgePackageId: string;
+    editedMarkdown?: string;
+    editedChapters?: KnowledgeChapterItem[];
+    editedRequest?: ParsedQuizRequest;
+  },
+  onProgress?: (event: PipelineStepEvent) => void
+): Promise<QuizSet> {
+  return consumeSsePost<QuizSet>(
+    '/api/ai/generate-from-knowledge',
+    params,
+    onProgress
+  );
+}
+
+export async function listSavedQuizzesApi(): Promise<QuizSet[]> {
+  const res = await fetch('/api/quizzes');
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => ({ quizzes: [] }));
+  return Array.isArray(data.quizzes) ? data.quizzes : [];
 }

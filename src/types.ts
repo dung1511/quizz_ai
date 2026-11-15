@@ -54,6 +54,95 @@ export interface KnowledgeUnit {
   pageNumber: number;
 }
 
+export type QuizOriginType = 'DOCUMENT' | 'AI_TEXT';
+export type KnowledgeOriginType = 'WEB' | 'AI_GENERATED';
+
+export interface DifficultyDistribution {
+  easy: number;
+  medium: number;
+  hard: number;
+}
+
+export interface ParsedQuizRequest {
+  id: string;
+  quizTitle: string;
+  rawPrompt: string;
+  topic: string;
+  subject: string;
+  audience: string;
+  questionCount: number;
+  difficultyMode: DifficultyLevel;
+  difficulty: DifficultyDistribution;
+  knowledgeAreas: string[];
+  focusChapters: string[];
+  language: string;
+  optionsCount: 4;
+  includeExplanation: boolean;
+  needsWebResearch: boolean;
+  createdAt: string;
+}
+
+export interface WebResearchSource {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  fetchedContent: string;
+  usedExcerpts: string[];
+  retrievedAt: string;
+  reliabilityTier: 'official_docs' | 'academic' | 'educational' | 'technical' | 'general';
+  fetchMethod: 'direct_fetch';
+}
+
+export interface KnowledgeConceptItem {
+  name: string;
+  definition: string;
+}
+
+export interface KnowledgeSectionItem {
+  id: string;
+  sectionNumber: string;
+  title: string;
+  concepts: KnowledgeConceptItem[];
+  explanation: string;
+  example?: string;
+  keyPoints: string[];
+  sourceRefIds?: string[];
+}
+
+export interface KnowledgeChapterItem {
+  id: string;
+  chapterNumber: number;
+  title: string;
+  summary: string;
+  sections: KnowledgeSectionItem[];
+}
+
+export interface KnowledgePackage {
+  id: string;
+  requestId: string;
+  request: ParsedQuizRequest;
+  topic: string;
+  contentOrigin: KnowledgeOriginType;
+  originNotice: string;
+  freshnessWarning?: string;
+  chapters: KnowledgeChapterItem[];
+  webSources: WebResearchSource[];
+  compiledMarkdown: string;
+  documentSource: DocumentSource;
+  createdAt: string;
+  updatedAt: string;
+  status: 'BUILT' | 'CONFIRMED';
+}
+
+export interface PipelineStepEvent {
+  step: string;
+  status: 'running' | 'completed' | 'warning' | 'error';
+  message: string;
+  detail?: string;
+  timestamp: string;
+}
+
 // 9. QUESTION-TO-SOURCE MAPPING & 10. GENERATION REASON
 export interface QuestionSource {
   documentId: string;
@@ -65,6 +154,10 @@ export interface QuestionSource {
   sourceText: string; // Exact passage from original document
   knowledgeUnit: string; // e.g. "SELECT statement"
   generationReason: string; // Specific pedagogical reason grounded in the chapter/section
+  contentOrigin?: KnowledgeOriginType;
+  webSourceTitle?: string;
+  webSourceUrl?: string;
+  retrievedAt?: string;
 }
 
 // 15. QUESTION VALIDATOR
@@ -160,6 +253,14 @@ export interface QuizSet {
   knowledgeUnits?: KnowledgeUnit[];
   questions: Question[];
   rawDocumentText?: string;
+  originType?: QuizOriginType;
+  aiRequest?: ParsedQuizRequest;
+  knowledgePackageId?: string;
+  contentOrigin?: KnowledgeOriginType;
+  originNotice?: string;
+  freshnessWarning?: string;
+  webSources?: WebResearchSource[];
+  compiledKnowledgeText?: string;
 }
 
 export interface QuizAttempt {

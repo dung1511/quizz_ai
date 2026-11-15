@@ -418,13 +418,17 @@ export const LibraryHistoryScreen: React.FC<LibraryHistoryScreenProps> = ({
 
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
-                        ⏱ {quiz.recommendedMinutes} phút
+                        {quiz.recommendedMinutes} phút
                       </span>
                       <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
-                        📊 Mức độ: {quiz.difficulty === 'all' ? 'Tổng hợp' : quiz.difficulty}
+                        Mức độ: {quiz.difficulty === 'all' ? 'Tổng hợp' : quiz.difficulty}
                       </span>
                       <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-medium border border-emerald-200/60">
-                        ✓ 100% Gắn nguồn
+                        {quiz.originType === 'AI_TEXT'
+                          ? quiz.contentOrigin === 'WEB'
+                            ? 'AI + Nguồn Web'
+                            : 'AI tổng hợp'
+                          : '100% Gắn nguồn'}
                       </span>
                     </div>
                   </div>

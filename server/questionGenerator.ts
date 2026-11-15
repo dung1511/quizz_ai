@@ -246,11 +246,10 @@ TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
 ]`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3.8-flash',
+    model: 'gemini-4-hydrogen',
     contents: prompt,
     config: {
       responseMimeType: 'application/json',
-      temperature: 0.3,
     },
   });
 

@@ -117,6 +117,30 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({
               </div>
               "{source.sourceText}"
             </div>
+            {source.webSourceUrl && (
+              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                <span className="font-bold block">Nguồn Web đã đối chiếu:</span>
+                <a
+                  href={source.webSourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-700 font-semibold hover:underline inline-flex items-center gap-1 break-all"
+                >
+                  <span>{source.webSourceTitle || source.webSourceUrl}</span>
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                </a>
+                {source.retrievedAt && (
+                  <p className="text-[11px] text-emerald-800">
+                    Thời điểm truy xuất: {new Date(source.retrievedAt).toLocaleString('vi-VN')}
+                  </p>
+                )}
+              </div>
+            )}
+            {source.contentOrigin === 'AI_GENERATED' && !source.webSourceUrl && (
+              <p className="text-[11px] text-amber-800 font-medium">
+                Nguồn kiến thức: Nội dung học tập do AI tổng hợp trước khi tạo câu hỏi (không sử dụng URL giả).
+              </p>
+            )}
           </div>
 
           {/* Pedagogical Generation Reason */}
