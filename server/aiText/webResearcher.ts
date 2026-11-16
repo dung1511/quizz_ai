@@ -193,7 +193,7 @@ function extractMeaningfulTokens(input: string): string[] {
   );
 }
 
-function isUsefulAcademicText(
+export function isUsefulAcademicText(
   text: string,
   pageTitle: string,
   request: ParsedQuizRequest
@@ -217,39 +217,59 @@ function isUsefulAcademicText(
     return false;
   }
 
-  const leadAndTitle = `${titleLower} ${lower.slice(0, 1800)}`;
   const topicTokens = extractMeaningfulTokens(request.topic);
+  const topicTokenSet = new Set(topicTokens);
   const contextTokens = extractMeaningfulTokens(
     `${request.subject} ${request.knowledgeAreas.join(' ')}`
+  ).filter((token) => !topicTokenSet.has(token));
+  const titleTokens = new Set(extractMeaningfulTokens(pageTitle));
+  const contentTokens = new Set(extractMeaningfulTokens(text.slice(0, 3500)));
+  const topicTitleMatches = topicTokens.filter((token) => titleTokens.has(token));
+  const topicContentMatches = topicTokens.filter((token) => contentTokens.has(token));
+  const contextMatches = contextTokens.filter(
+    (token) => titleTokens.has(token) || contentTokens.has(token)
   );
-
-  if (topicTokens.length === 0 && contextTokens.length === 0) return true;
-
-  const topicMatches = topicTokens.filter((t) => leadAndTitle.includes(t));
-  const contextMatches = contextTokens.filter((t) => leadAndTitle.includes(t));
-
-  // Must match at least 1 core topic token (if topicTokens exist)
-  if (topicTokens.length > 0 && topicMatches.length === 0) {
-    return false;
-  }
+  const normalizePhrase = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+  const topicPhrase = normalizePhrase(request.topic);
+  const titlePhrase = normalizePhrase(pageTitle);
 
   // For encyclopedic/Wikipedia pages, ensure the article title itself is about the topic or a key area
   if (
     titleLower.includes('wikipedia') &&
     topicTokens.length > 0 &&
-    !topicTokens.some((t) => titleLower.includes(t)) &&
-    !extractMeaningfulTokens(request.knowledgeAreas.join(' ')).some((t) => titleLower.includes(t))
+    topicTitleMatches.length === 0 &&
+    !extractMeaningfulTokens(request.knowledgeAreas.join(' ')).some((token) => titleTokens.has(token))
   ) {
     return false;
   }
 
-  // If topic only had 1 token (e.g. "python"), require either >= 1 subject/knowledgeArea token too,
-  // or the token appears multiple times with academic/technical context (avoid roller coaster / snake pages)
-  const combinedMatches = new Set([...topicMatches, ...contextMatches]).size;
-  if (topicTokens.length >= 2) {
-    return topicMatches.length >= 2 || (topicMatches.length >= 1 && combinedMatches >= 2);
+  if (topicTokens.length === 0) {
+    return (
+      contextTokens.length > 0 &&
+      contextTokens.some((token) => titleTokens.has(token)) &&
+      contextMatches.length >= Math.min(2, contextTokens.length)
+    );
   }
-  return combinedMatches >= 2 || (topicMatches.length >= 1 && contextTokens.length === 0);
+
+  if (topicTitleMatches.length === 0 || topicContentMatches.length === 0) return false;
+
+  if (topicTokens.length === 1 && contextTokens.length === 0) {
+    return Boolean(topicPhrase && titlePhrase.includes(topicPhrase));
+  }
+
+  const requiredTopicMatches = Math.min(
+    topicTokens.length,
+    topicTokens.length === 1 ? 1 : Math.max(2, Math.ceil(topicTokens.length * 0.5))
+  );
+  const hasContextSupport =
+    contextTokens.length === 0 || contextMatches.length >= 1;
+
+  return topicContentMatches.length >= requiredTopicMatches && hasContextSupport;
 }
 
 async function fetchSingleWebPage(
@@ -333,10 +353,12 @@ async function discoverWikipediaCandidates(
     new Set(
       [
         request.topic,
-        coreTopicTokens.length > 0 && request.subject
-          ? `${coreTopicTokens.slice(0, 2).join(' ')} ${request.subject}`
+        request.subject
+          ? `${request.topic} ${request.subject}`
           : '',
-        ...request.knowledgeAreas.slice(0, 1),
+        request.knowledgeAreas[0]
+          ? `${request.topic} ${request.knowledgeAreas[0]}`
+          : '',
       ]
         .map((q) => q.trim())
         .filter((q) => q.length >= 2)

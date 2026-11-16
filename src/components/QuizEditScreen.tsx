@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { QuizSet, Question, DifficultyLevel } from '../types';
+import { QuizSet, Question, DifficultyLevel, QuestionIllustration } from '../types';
+import { sanitizeTikzCode } from '../utils/tikzValidation';
+import { TikzPreview } from './TikzPreview';
 
 interface QuizEditScreenProps {
   quizSet: QuizSet;
@@ -30,6 +32,15 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
       opt.key === key ? { ...opt, text } : opt
     );
     handleUpdateActiveField('options', updatedOpts);
+  };
+
+  const handleUpdateIllustration = (patch: Partial<QuestionIllustration>) => {
+    if (!activeQuestion) return;
+    handleUpdateActiveField('illustration', {
+      ...activeQuestion.illustration,
+      needsImage: true,
+      ...patch,
+    });
   };
 
   const handleAddNewQuestion = () => {
@@ -289,6 +300,94 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Illustration */}
+          <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#464555]">
+                  Hình minh họa, biểu đồ hoặc hình toán học
+                </h3>
+                <p className="mt-1 text-[11px] text-[#777587]">
+                  Nhập mã TikZ để hình được dựng khi xuất đề LaTeX.
+                </p>
+              </div>
+              {activeQuestion.illustration?.needsImage ? (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateActiveField('illustration', undefined)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Bỏ hình
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateIllustration({})}
+                  className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                >
+                  Thêm hình
+                </button>
+              )}
+            </div>
+
+            {activeQuestion.illustration?.needsImage && (
+              <div className="space-y-3 border-t border-blue-200 pt-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-[#464555]">Loại hình:</label>
+                    <select
+                      value={activeQuestion.illustration.imageType || 'diagram'}
+                      onChange={(e) =>
+                        handleUpdateIllustration({
+                          imageType: e.target.value as QuestionIllustration['imageType'],
+                        })
+                      }
+                      className="w-full rounded-lg border border-[#e2e4e8] bg-white px-3 py-2 text-xs text-[#191c1e]"
+                    >
+                      <option value="diagram">Hình vẽ / hình toán học</option>
+                      <option value="chart">Biểu đồ</option>
+                      <option value="schema">Sơ đồ</option>
+                      <option value="flowchart">Lưu đồ</option>
+                      <option value="table">Bảng</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-[#464555]">Chú thích hình:</label>
+                    <input
+                      type="text"
+                      value={activeQuestion.illustration.caption || ''}
+                      onChange={(e) => handleUpdateIllustration({ caption: e.target.value })}
+                      placeholder="Ví dụ: Đồ thị hàm số y = x²"
+                      className="w-full rounded-lg border border-[#e2e4e8] bg-white px-3 py-2 text-xs text-[#191c1e]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#464555]">Mã TikZ:</label>
+                  <textarea
+                    value={activeQuestion.illustration.tikzCode || ''}
+                    onChange={(e) => handleUpdateIllustration({ tikzCode: e.target.value })}
+                    rows={8}
+                    spellCheck={false}
+                    placeholder={'Nhập lệnh bên trong tikzpicture, ví dụ:\n\\draw (0,0) -- (4,0) -- (2,3) -- cycle;\n\\node at (2,-0.4) {$A$};'}
+                    className="w-full rounded-lg border border-[#e2e4e8] bg-white p-3 font-mono text-xs text-[#191c1e] focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
+                  {activeQuestion.illustration.tikzCode?.trim() &&
+                    !sanitizeTikzCode(activeQuestion.illustration.tikzCode) && (
+                      <p role="alert" className="text-[11px] font-medium text-red-700">
+                        Mã TikZ không hợp lệ hoặc có lệnh không được hỗ trợ; hình này sẽ không xuất hiện trong tệp LaTeX.
+                      </p>
+                    )}
+                  <TikzPreview illustration={activeQuestion.illustration} />
+                  <p className="text-[11px] text-[#777587]">
+                    Chỉ nhập lệnh vẽ bên trong môi trường tikzpicture, không cần thêm begin/end. Có thể dùng draw, node, coordinate, fill và addplot.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Explanation */}

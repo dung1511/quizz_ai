@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QuizSet, QuizAttempt } from '../types';
+import { MathText } from './MathText';
+import { TikzPreview } from './TikzPreview';
 
 interface QuizTakingScreenProps {
   quizSet: QuizSet;
@@ -259,8 +261,12 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
             {/* Question Text */}
             <div className="space-y-2">
               <h2 className="font-display text-lg sm:text-xl font-bold text-[#191c1e] leading-relaxed">
-                {currentQuestion.questionText}
+                <MathText text={currentQuestion.questionText} />
               </h2>
+              <TikzPreview
+                illustration={currentQuestion.illustration}
+                questionText={currentQuestion.questionText}
+              />
               <p className="text-xs text-[#777587]">
                 Chọn 1 trong 4 phương án bên dưới (hoặc dùng phím tắt A, B, C, D):
               </p>
@@ -292,7 +298,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
                       {opt.key}
                     </div>
                     <div className="flex-1 text-sm sm:text-base text-[#191c1e] pt-0.5 leading-relaxed">
-                      {opt.text}
+                      <MathText text={opt.text} />
                     </div>
                     <div className="mt-1 shrink-0">
                       <div

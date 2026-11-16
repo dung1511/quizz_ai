@@ -4,6 +4,9 @@ import { SourceViewerModal } from './SourceViewerModal';
 import { ExportPaperModal } from './ExportPaperModal';
 import { ExamMatrixModal } from './ExamMatrixModal';
 import { PracticeModal } from './PracticeModal';
+import { MathText } from './MathText';
+import { TikzPreview } from './TikzPreview';
+import { normalizeQuizTitle } from '../utils/quizTitle';
 
 interface QuizDetailScreenProps {
   quizSet: QuizSet;
@@ -154,7 +157,7 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
             </div>
 
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {quizSet.title}
+              {normalizeQuizTitle(quizSet.title)}
             </h1>
 
             {/* Metadata Badges */}
@@ -447,23 +450,10 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
 
               {/* Question Text */}
               <h3 className="font-semibold text-base sm:text-lg text-slate-900 leading-snug">
-                {question.questionText}
+                <MathText text={question.questionText} />
               </h3>
 
-              {/* Illustration prompt banner if exists */}
-              {question.illustration?.needsImage && (
-                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-blue-600 shrink-0">image</span>
-                  <span>
-                    <strong>
-                      {question.illustration.tikzCode ? 'Hình vẽ TikZ:' : 'Mô tả hình vẽ:'}
-                    </strong>{' '}
-                    {question.illustration.caption || question.illustration.imagePrompt || 'Minh họa cho câu hỏi'}
-                    {question.illustration.tikzCode &&
-                      ' Hình sẽ được dựng khi xuất đề LaTeX (.tex).'}
-                  </span>
-                </div>
-              )}
+              <TikzPreview illustration={question.illustration} questionText={question.questionText} />
 
               {/* 4 Options Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
@@ -488,7 +478,7 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
                       >
                         {opt.key}
                       </span>
-                      <span className="leading-relaxed flex-1">{opt.text}</span>
+                      <MathText text={opt.text} className="leading-relaxed flex-1" />
                       {isCorrect && (
                         <span className="material-symbols-outlined text-emerald-600 text-[18px] shrink-0">
                           check_circle
@@ -515,7 +505,7 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
                     </button>
                   </div>
                   <p className="text-slate-700 leading-relaxed text-sm">
-                    {question.explanation}
+                    <MathText text={question.explanation} />
                   </p>
                   {question.source?.sourceText && (
                     <div className="mt-2 pt-2.5 border-t border-slate-200/80 text-xs text-amber-900 bg-amber-50/50 p-2.5 rounded-lg italic font-serif">

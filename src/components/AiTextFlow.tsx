@@ -869,6 +869,21 @@ export const AiTextFlow: React.FC<AiTextFlowProps> = ({ onQuizCreated }) => {
             )}
           </div>
 
+          {knowledgePkg.status === 'NEEDS_REVIEW' && (
+            <div
+              role="alert"
+              className="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-950 text-xs space-y-2"
+            >
+              <p className="font-bold">Gói kiến thức cần rà soát nguồn trước khi xác nhận.</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {(knowledgePkg.reviewIssues || []).map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+              <p>Đề vẫn có thể được tạo, nhưng gói sẽ không được đánh dấu CONFIRMED cho đến khi nguồn được đối chiếu.</p>
+            </div>
+          )}
+
           {/* Web Sources List (Only if WEB) */}
           {knowledgePkg.contentOrigin === 'WEB' && knowledgePkg.webSources.length > 0 && (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
@@ -901,7 +916,7 @@ export const AiTextFlow: React.FC<AiTextFlowProps> = ({ onQuizCreated }) => {
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-600 line-clamp-2 pt-0.5">
-                      {src.usedExcerpts[0] || src.fetchedContent.slice(0, 140)}
+                      {src.usedExcerpts[0] || 'Chưa có trích đoạn được đối chiếu từ trang này.'}
                     </p>
                   </div>
                 ))}

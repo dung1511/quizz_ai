@@ -1,4 +1,5 @@
 import { QuizSet, ExamPaperConfig } from '../src/types';
+import { normalizeQuizTitle } from '../src/utils/quizTitle';
 
 export function generatePaperExamHTML(
   quizSet: QuizSet,
@@ -7,7 +8,7 @@ export function generatePaperExamHTML(
   const {
     schoolName = 'TRƯỜNG ĐẠI HỌC CÔNG NGHỆ',
     facultyName = 'KHOA CÔNG NGHỆ THÔNG TIN',
-    subjectName = quizSet.title,
+    subjectName = normalizeQuizTitle(quizSet.title),
     examName = 'ĐỀ THI KẾT THÚC HỌC PHẦN',
     examCode = '001',
     durationMinutes = quizSet.recommendedMinutes || 60,

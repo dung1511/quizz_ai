@@ -1,5 +1,7 @@
 import React from 'react';
 import { Question } from '../types';
+import { MathText } from './MathText';
+import { TikzPreview } from './TikzPreview';
 
 interface SourceViewerModalProps {
   question: Question | null;
@@ -71,8 +73,9 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({
               Câu hỏi đang xét:
             </span>
             <p className="font-semibold text-slate-900 leading-snug">
-              {question.questionText}
+              <MathText text={question.questionText} />
             </p>
+            <TikzPreview illustration={question.illustration} questionText={question.questionText} />
             <div className="mt-2 flex items-center gap-2 text-xs">
               <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
                 Đáp án đúng: {question.correctAnswer}

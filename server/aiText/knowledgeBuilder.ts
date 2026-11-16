@@ -20,6 +20,7 @@ import {
   extractJsonFromText,
 } from '../geminiClient';
 import { getKnowledgePackage, saveKnowledgePackage } from '../storage';
+import { withKnowledgeReviewStatus } from './knowledgeValidation';
 import { researchWebSources } from './webResearcher';
 
 interface RawKnowledgeChapter {
@@ -263,7 +264,7 @@ export function organizeKnowledge(
       ? `Nội dung học tập được tổng hợp và đối chiếu từ ${webSources.length} nguồn tài liệu web công khai đã truy xuất trực tiếp.`
       : 'Nội dung học tập này do mô hình AI tự tổng hợp từ kiến thức nền tảng (không truy xuất được nguồn web trực tiếp). Không có URL hoặc trích dẫn ngoài được bịa đặt — vui lòng rà soát trước khi tạo đề.';
 
-  return {
+  const pkg: KnowledgePackage = {
     id: pkgId,
     requestId: request.id,
     request,
@@ -279,6 +280,7 @@ export function organizeKnowledge(
     updatedAt: nowIso,
     status: 'BUILT',
   };
+  return withKnowledgeReviewStatus(pkg, 'BUILT');
 }
 
 export async function buildKnowledgeContent(
@@ -513,7 +515,7 @@ ${hasWebSources ? `DỮ LIỆU NGUỒN WEB ĐÃ TRUY XUẤT:\n${webContextBlock}
     { freshnessWarning }
   );
 
-  saveKnowledgePackage(pkg);
+  await saveKnowledgePackage(pkg);
 
   emit(
     'knowledge_organize',
@@ -524,15 +526,15 @@ ${hasWebSources ? `DỮ LIỆU NGUỒN WEB ĐÃ TRUY XUẤT:\n${webContextBlock}
   return pkg;
 }
 
-export function updateKnowledgePackageFromUserEdit(
+export async function updateKnowledgePackageFromUserEdit(
   pkgId: string,
   edits: {
     chapters?: KnowledgeChapterItem[];
     compiledMarkdown?: string;
     request?: ParsedQuizRequest;
   }
-): KnowledgePackage {
-  const existing = getKnowledgePackage(pkgId);
+): Promise<KnowledgePackage> {
+  const existing = await getKnowledgePackage(pkgId);
   if (!existing) {
     throw new AiServiceError('Không tìm thấy gói nội dung kiến thức để cập nhật.', {
       statusCode: 404,
@@ -597,8 +599,8 @@ export function updateKnowledgePackageFromUserEdit(
       customMarkdown: edits.compiledMarkdown,
     }
   );
-  updated.status = 'CONFIRMED';
+  const reviewedPackage = withKnowledgeReviewStatus(updated, 'CONFIRMED');
 
-  saveKnowledgePackage(updated);
-  return updated;
+  await saveKnowledgePackage(reviewedPackage);
+  return reviewedPackage;
 }

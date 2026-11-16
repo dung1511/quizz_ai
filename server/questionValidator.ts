@@ -48,6 +48,8 @@ export function validateQuestion(
     src.chapter.trim().length > 0 &&
     src.section &&
     src.section.trim().length > 0 &&
+    src.sourceChunkId &&
+    src.sourceChunkId.trim().length > 0 &&
     src.sourceText &&
     src.sourceText.trim().length > 10 &&
     src.knowledgeUnit &&

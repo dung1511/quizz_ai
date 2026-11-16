@@ -10,6 +10,7 @@ import {
   buildExactMatrixFromRequest,
   generateQuestionsFromKnowledge,
 } from './aiTextQuestionGenerator';
+import { findBestSourceChunk } from '../sourceMatcher';
 
 export interface KnowledgeQuestionValidationResult {
   validQuestions: Question[];
@@ -108,6 +109,14 @@ export function validateSingleKnowledgeQuestion(
     issues.push('Thiếu giải thích đáp án rõ ràng.');
   }
 
+  const matchedChunk = findBestSourceChunk(
+    q.source?.sourceText || '',
+    pkg.documentSource.chunks,
+    { chapter: q.source?.chapter, section: q.source?.section }
+  );
+  const sourceChunkMatches =
+    Boolean(q.source?.sourceChunkId) && matchedChunk?.chunk.id === q.source.sourceChunkId;
+
   // 5. Source mapping & Knowledge Unit link
   const hasSourceMapping = Boolean(
     q.source &&
@@ -115,10 +124,13 @@ export function validateSingleKnowledgeQuestion(
       q.source.section &&
       q.source.knowledgeUnit &&
       q.source.sourceText &&
-      q.source.sourceText.trim().length >= 15
+      q.source.sourceText.trim().length >= 15 &&
+      sourceChunkMatches &&
+      (pkg.contentOrigin !== 'WEB' ||
+        pkg.webSources.some((source) => source.url === q.source.webSourceUrl))
   );
   if (!hasSourceMapping) {
-    issues.push('Thiếu liên kết tới chương/mục hoặc đoạn nội dung kiến thức căn cứ.');
+    issues.push('Thiếu liên kết tới chương/mục, đoạn nguồn khớp với chunk hoặc URL web hợp lệ.');
   }
 
   // 6. Groundedness in compiled knowledge content

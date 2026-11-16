@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { processDocument } from './server/documentProcessor';
 import {
   generateExamWithAI,
+  SourceGroundingError,
   regenerateSingleQuestion,
   generatePracticeQuestions,
   buildExamMatrix,
@@ -24,10 +25,12 @@ import {
   getKnowledgePackage,
   getQuizById,
   getQuizSources,
+  initializeStorage,
   listQuizzes,
   saveQuizAndSources,
 } from './server/storage';
 import { QuizSet } from './src/types';
+import { renderTikzPreview, TikzPreviewError } from './server/tikzPreviewService';
 
 dotenv.config();
 
@@ -35,6 +38,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  await initializeStorage();
   app.use(express.json({ limit: '50mb' }));
 
   // ==========================================
@@ -155,7 +159,11 @@ async function startServer() {
       res.json(result);
     } catch (err: any) {
       console.error('Error generating exam:', err);
-      res.status(500).json({ error: err.message || 'Failed to generate exam' });
+      const status = err instanceof SourceGroundingError ? err.statusCode : 500;
+      res.status(status).json({
+        error: err.message || 'Failed to generate exam',
+        code: err instanceof SourceGroundingError ? err.code : 'GENERATE_EXAM_ERROR',
+      });
     }
   });
 
@@ -220,6 +228,27 @@ async function startServer() {
     } catch (err: any) {
       console.error('Error generating practice questions:', err);
       res.status(500).json({ error: err.message || 'Failed to generate practice questions' });
+    }
+  });
+
+  app.post('/api/questions/tikz-preview', async (req, res) => {
+    const tikzCode = req.body?.tikzCode;
+    if (typeof tikzCode !== 'string') {
+      res.status(400).json({ error: 'Thiếu mã TikZ.' });
+      return;
+    }
+
+    try {
+      const svg = await renderTikzPreview(tikzCode);
+      res.json({ svg });
+    } catch (error) {
+      if (error instanceof TikzPreviewError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+
+      console.error('Error rendering TikZ preview:', error);
+      res.status(500).json({ error: 'Không thể dựng hình TikZ.' });
     }
   });
 
@@ -355,13 +384,18 @@ async function startServer() {
   });
 
   // Step 4: Retrieve knowledge preview by ID
-  app.get('/api/ai/knowledge-preview/:id', (req, res) => {
-    const pkg = getKnowledgePackage(req.params.id);
-    if (!pkg) {
-      res.status(404).json({ error: 'Không tìm thấy nội dung học tập.' });
-      return;
+  app.get('/api/ai/knowledge-preview/:id', async (req, res) => {
+    try {
+      const pkg = await getKnowledgePackage(req.params.id);
+      if (!pkg) {
+        res.status(404).json({ error: 'Không tìm thấy nội dung học tập.' });
+        return;
+      }
+      res.json(pkg);
+    } catch (error) {
+      console.error('[QuizAI][knowledge-preview] Error:', error);
+      res.status(500).json({ error: 'Không thể tải nội dung học tập.' });
     }
-    res.json(pkg);
   });
 
   // Step 5 & 6: Generate questions strictly from confirmed knowledge, validate, repair, and save
@@ -387,7 +421,7 @@ async function startServer() {
       const executeGeneration = async (
         onProgress?: (ev: any) => void
       ): Promise<QuizSet> => {
-        const confirmedPkg = updateKnowledgePackageFromUserEdit(knowledgePackageId, {
+        const confirmedPkg = await updateKnowledgePackageFromUserEdit(knowledgePackageId, {
           chapters: editedChapters,
           compiledMarkdown: editedMarkdown,
           request: editedRequest,
@@ -432,7 +466,7 @@ async function startServer() {
           compiledKnowledgeText: confirmedPkg.compiledMarkdown,
         };
 
-        saveQuizAndSources(quizSet, confirmedPkg);
+        await saveQuizAndSources(quizSet, confirmedPkg);
 
         onProgress?.({
           step: 'saving',
@@ -490,28 +524,43 @@ async function startServer() {
   );
 
   // List saved AI_TEXT quizzes
-  app.get('/api/quizzes', (req, res) => {
-    res.json({ quizzes: listQuizzes() });
+  app.get('/api/quizzes', async (_req, res) => {
+    try {
+      res.json({ quizzes: await listQuizzes() });
+    } catch (error) {
+      console.error('[QuizAI][quizzes] Error:', error);
+      res.status(500).json({ error: 'Không thể tải danh sách bộ đề.' });
+    }
   });
 
   // Get single quiz by ID
-  app.get('/api/quizzes/:id', (req, res) => {
-    const quiz = getQuizById(req.params.id);
-    if (!quiz) {
-      res.status(404).json({ error: 'Không tìm thấy bộ đề.' });
-      return;
+  app.get('/api/quizzes/:id', async (req, res) => {
+    try {
+      const quiz = await getQuizById(req.params.id);
+      if (!quiz) {
+        res.status(404).json({ error: 'Không tìm thấy bộ đề.' });
+        return;
+      }
+      res.json(quiz);
+    } catch (error) {
+      console.error('[QuizAI][quiz] Error:', error);
+      res.status(500).json({ error: 'Không thể tải bộ đề.' });
     }
-    res.json(quiz);
   });
 
   // Get quiz sources & knowledge links
-  app.get(['/api/quizzes/:id/sources', '/api/quizzes/:id/sources/'], (req, res) => {
-    const sources = getQuizSources(req.params.id);
-    if (!sources) {
-      res.status(404).json({ error: 'Không tìm thấy nguồn của bộ đề.' });
-      return;
+  app.get(['/api/quizzes/:id/sources', '/api/quizzes/:id/sources/'], async (req, res) => {
+    try {
+      const sources = await getQuizSources(req.params.id);
+      if (!sources) {
+        res.status(404).json({ error: 'Không tìm thấy nguồn của bộ đề.' });
+        return;
+      }
+      res.json(sources);
+    } catch (error) {
+      console.error('[QuizAI][quiz-sources] Error:', error);
+      res.status(500).json({ error: 'Không thể tải nguồn của bộ đề.' });
     }
-    res.json(sources);
   });
 
   // ==========================================
@@ -536,4 +585,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('[QuizAI] Server startup failed:', error);
+  process.exitCode = 1;
+});

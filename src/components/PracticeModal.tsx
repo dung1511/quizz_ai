@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Question, DocumentSource } from '../types';
 import { generatePracticeQuestionsApi } from '../services/api';
+import { MathText } from './MathText';
+import { TikzPreview } from './TikzPreview';
 
 interface PracticeModalProps {
   knowledgeUnitName: string;
@@ -192,8 +194,9 @@ export const PracticeModal: React.FC<PracticeModalProps> = ({
 
               {/* Question */}
               <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
-                {currentQ.questionText}
+                <MathText text={currentQ.questionText} />
               </p>
+              <TikzPreview illustration={currentQ.illustration} questionText={currentQ.questionText} />
 
               {/* Options */}
               <div className="space-y-2">
@@ -221,7 +224,7 @@ export const PracticeModal: React.FC<PracticeModalProps> = ({
                       className={`p-3 rounded-xl border text-xs sm:text-sm cursor-pointer transition-all flex items-start gap-2.5 ${optClass}`}
                     >
                       <span className="font-bold w-5 shrink-0">{opt.key}.</span>
-                      <span>{opt.text}</span>
+                      <MathText text={opt.text} />
                     </div>
                   );
                 })}
@@ -234,7 +237,9 @@ export const PracticeModal: React.FC<PracticeModalProps> = ({
                     <span className="material-symbols-outlined text-[16px] text-emerald-600">info</span>
                     <span>Giải thích chi tiết:</span>
                   </div>
-                  <p className="text-slate-600 leading-relaxed">{currentQ.explanation}</p>
+                  <p className="text-slate-600 leading-relaxed">
+                    <MathText text={currentQ.explanation} />
+                  </p>
                 </div>
               )}
             </div>

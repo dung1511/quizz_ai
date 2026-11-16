@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { QuizAttempt, QuizSet, Question } from '../types';
 import { SourceViewerModal } from './SourceViewerModal';
 import { PracticeModal } from './PracticeModal';
+import { MathText } from './MathText';
+import { TikzPreview } from './TikzPreview';
 
 interface QuizReviewScreenProps {
   attempt: QuizAttempt;
@@ -195,8 +197,9 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
 
               {/* Question Text */}
               <h3 className="font-semibold text-base sm:text-lg text-slate-900 leading-snug">
-                {q.questionText}
+                <MathText text={q.questionText} />
               </h3>
+              <TikzPreview illustration={q.illustration} questionText={q.questionText} />
 
               {/* 4 Options */}
               <div className="space-y-2">
@@ -228,7 +231,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
                         >
                           {opt.key}
                         </span>
-                        <span className="leading-relaxed">{opt.text}</span>
+                        <MathText text={opt.text} className="leading-relaxed" />
                       </div>
 
                       <div className="shrink-0 flex items-center gap-1 text-[11px] font-bold">
@@ -257,7 +260,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
                   <span>Giải thích chi tiết (Đáp án {q.correctAnswer}):</span>
                 </div>
                 <p className="text-slate-700 leading-relaxed text-sm">
-                  {q.explanation}
+                  <MathText text={q.explanation} />
                 </p>
                 {q.source?.sourceText && (
                   <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-amber-900 bg-amber-50/60 p-2.5 rounded-lg italic font-serif">

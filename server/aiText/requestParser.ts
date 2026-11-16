@@ -11,6 +11,7 @@ import {
   extractJsonFromText,
 } from '../geminiClient';
 import { saveAiRequest } from '../storage';
+import { normalizeQuizTitle } from '../../src/utils/quizTitle';
 
 export interface ParseRequestInput {
   rawPrompt: string;
@@ -107,7 +108,7 @@ export function normalizeParsedRequest(
   input: ParseRequestInput
 ): ParsedQuizRequest {
   const trimmedPrompt = input.rawPrompt.trim();
-  const topic = (raw.topic || trimmedPrompt).trim().slice(0, 120);
+  const topic = normalizeQuizTitle(raw.topic || trimmedPrompt).slice(0, 120);
   const subject = (raw.subject || topic).trim();
   const audience = (raw.audience || 'Học sinh / Sinh viên').trim();
 
@@ -152,8 +153,8 @@ export function normalizeParsedRequest(
   const focusChapters = rawFocus.length > 0 ? rawFocus : knowledgeAreas;
 
   const quizTitle =
-    (input.quizTitle && input.quizTitle.trim()) ||
-    (raw.quizTitle && raw.quizTitle.trim()) ||
+    normalizeQuizTitle(input.quizTitle || '') ||
+    normalizeQuizTitle(raw.quizTitle || '') ||
     `Đề trắc nghiệm: ${topic}`;
 
   return {
@@ -279,6 +280,6 @@ ${input.difficultyMode ? `Độ khó người dùng chọn bổ sung: ${input.di
   });
 
   const normalized = normalizeParsedRequest(parsed, input);
-  saveAiRequest(normalized);
+  await saveAiRequest(normalized);
   return normalized;
 }

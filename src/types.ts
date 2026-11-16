@@ -132,7 +132,8 @@ export interface KnowledgePackage {
   documentSource: DocumentSource;
   createdAt: string;
   updatedAt: string;
-  status: 'BUILT' | 'CONFIRMED';
+  status: 'BUILT' | 'CONFIRMED' | 'NEEDS_REVIEW';
+  reviewIssues?: string[];
 }
 
 export interface PipelineStepEvent {

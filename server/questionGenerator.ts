@@ -12,6 +12,17 @@ import { validateQuestionSet } from './questionValidator';
 import { cleanConceptName } from './documentProcessor';
 import { sanitizeTikzCode } from '../src/utils/tikzValidation';
 import { OSI_TIKZ_CODE } from '../src/utils/defaultIllustrations';
+import { attachQuestionToSourceChunk } from './sourceMatcher';
+
+export class SourceGroundingError extends Error {
+  readonly statusCode = 422;
+  readonly code = 'SOURCE_GROUNDING_FAILED';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'SourceGroundingError';
+  }
+}
 
 export interface GenerateExamRequest {
   document: DocumentSource;
@@ -120,11 +131,19 @@ export async function generateExamWithAI(
     generatedQuestions = generateRuleBasedQuestions(req, matrix);
   }
 
+  const strictSourceOnly = req.strictSourceOnly !== false;
+  generatedQuestions = generatedQuestions
+    .map((question) => attachQuestionToSourceChunk(question, req.document.chunks))
+    .filter((question) => !strictSourceOnly || Boolean(question.source.sourceChunkId));
+
   // Adjust count to exactly match requested number
   if (generatedQuestions.length < req.numQuestions) {
-    const fillers = generateRuleBasedQuestions(req, matrix);
+    const fillers = generateRuleBasedQuestions(req, matrix).map((question) =>
+      attachQuestionToSourceChunk(question, req.document.chunks)
+    );
     for (const f of fillers) {
       if (generatedQuestions.length >= req.numQuestions) break;
+      if (strictSourceOnly && !f.source.sourceChunkId) continue;
       if (!generatedQuestions.some((q) => q.questionText === f.questionText)) {
         generatedQuestions.push({
           ...f,
@@ -133,6 +152,12 @@ export async function generateExamWithAI(
         });
       }
     }
+  }
+
+  if (strictSourceOnly && generatedQuestions.length < req.numQuestions) {
+    throw new SourceGroundingError(
+      `Chỉ đối chiếu được ${generatedQuestions.length}/${req.numQuestions} câu với đoạn văn bản thật trong tài liệu. Hãy kiểm tra tài liệu hoặc bỏ chọn chế độ chỉ tạo câu hỏi có nguồn.`
+    );
   }
 
   // Cap at exact question count
@@ -216,7 +241,7 @@ NGUYÊN TẮC BẮT BUỘC CHỐNG BỊA ĐẶT KIẾN THỨC (ANTI-HALLUCINATIO
    - knowledgeUnit: Tên đơn vị kiến thức (ví dụ "Câu lệnh SELECT", "Mô hình OSI").
    - generationReason: Lý do sư phạm cụ thể tại sao câu hỏi này được tạo từ phần kiến thức đó (ví dụ: "Kiến thức này là định nghĩa nền tảng của mục 2.1 và chứa thông tin phân loại cốt lõi."). Không dùng lý do chung chung!
 4. Với câu hỏi toán học, viết biểu thức bằng LaTeX inline dạng $...$ khi phù hợp.
-5. Nếu câu hỏi cần biểu đồ, hình học, sơ đồ hoặc hình minh họa để trả lời, đặt needsImage = true và tạo tikzCode là phần lệnh nằm bên trong môi trường tikzpicture (không kèm documentclass, usepackage hay begin/end tikzpicture). Chỉ dùng các lệnh TikZ cơ bản như draw, fill, node, coordinate, path, addplot và môi trường axis/scope. Không dùng lệnh đọc/ghi tệp, định nghĩa macro hoặc lệnh hệ thống. imagePrompt mô tả ngắn nội dung hình.
+5. Với câu hỏi về khối chóp, lăng trụ, hình học không gian, đồ thị hàm số có đủ dữ kiện, miền diện tích tích phân hoặc biểu diễn hình học số phức, hãy tạo sơ đồ TikZ khi hình giúp hiểu bài; không bỏ hình nếu câu hỏi cần đọc hình để trả lời. Đặt needsImage = true và tạo tikzCode là phần lệnh nằm bên trong môi trường tikzpicture (không kèm documentclass, usepackage hay begin/end tikzpicture). Chỉ dùng các lệnh TikZ cơ bản như draw, fill, node, coordinate, path, addplot và môi trường axis/scope. Không dùng lệnh đọc/ghi tệp, định nghĩa macro hoặc lệnh hệ thống. imagePrompt mô tả ngắn nội dung hình.
 
 TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
 [
@@ -327,7 +352,7 @@ TRẢ VỀ KẾT QUẢ DƯỚI DẠNG JSON ARRAY CHÍNH XÁC THEO SCHEMA:
         : undefined,
     };
 
-    return q;
+    return attachQuestionToSourceChunk(q, document.chunks);
   });
 }
 
@@ -729,7 +754,7 @@ function synthesizeQuestionFromKU(
     }
   }
 
-  return {
+  const question: Question = {
     id: qId,
     questionNumber: number,
     questionText,
@@ -772,6 +797,8 @@ function synthesizeQuestionFromKU(
         }
       : undefined,
   };
+
+  return attachQuestionToSourceChunk(question, document.chunks);
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   extractJsonFromText,
 } from '../geminiClient';
 import { sanitizeTikzCode } from '../../src/utils/tikzValidation';
+import { findBestSourceChunk } from '../sourceMatcher';
 
 export function buildExactMatrixFromRequest(pkg: KnowledgePackage): ExamMatrix {
   const { difficulty, questionCount } = pkg.request;
@@ -197,20 +198,18 @@ function mapRawItemToQuestion(
     ? `${pkg.documentSource.chapters[0].sections[0].sectionNumber} ${pkg.documentSource.chapters[0].sections[0].title}`
     : '1.1 Kiến thức trọng tâm';
 
-  const chapter = (item.chapter || fallbackChapter).trim();
-  const section = (item.section || fallbackSection).trim();
-  const kuName = (item.knowledgeUnit || item.topic || section).trim();
+  const requestedChapter = (item.chapter || fallbackChapter).trim();
+  const requestedSection = (item.section || fallbackSection).trim();
+  const kuName = (item.knowledgeUnit || item.topic || requestedSection).trim();
   const sourceText = (item.sourceText || '').trim();
   const generationReason = (item.generationReason || '').trim();
+  const matchedChunk = findBestSourceChunk(sourceText, pkg.documentSource.chunks, {
+    chapter: requestedChapter,
+    section: requestedSection,
+  });
+  const chapter = matchedChunk?.chunk.chapterTitle || requestedChapter;
+  const section = matchedChunk?.chunk.sectionTitle || requestedSection;
   const sectionSourceRefIds = getSectionSourceRefIds(pkg, chapter, section, kuName);
-
-  // Match chunk & web source if WEB origin
-  const matchedChunk =
-    pkg.documentSource.chunks.find(
-      (ch) =>
-        ch.chapterTitle.toLowerCase().includes(chapter.toLowerCase()) ||
-        chapter.toLowerCase().includes(ch.chapterTitle.toLowerCase())
-    ) || pkg.documentSource.chunks[0];
 
   const matchedWebSource =
     pkg.contentOrigin === 'WEB'
@@ -234,9 +233,10 @@ function mapRawItemToQuestion(
       documentName: pkg.documentSource.fileName,
       chapter,
       section,
-      page: matchedChunk?.pageNumber || 1,
-      sourceChunkId: matchedChunk?.id || `chunk-${idx + 1}`,
-      sourceText,
+      page: matchedChunk?.chunk.pageNumber || 1,
+      sourceChunkId: matchedChunk?.chunk.id || '',
+      sourceText:
+        matchedChunk && !matchedChunk.exact ? matchedChunk.chunk.content : sourceText,
       knowledgeUnit: kuName,
       generationReason,
       contentOrigin: pkg.contentOrigin,
@@ -334,7 +334,7 @@ QUY TẮC BẮT BUỘC:
 6. Trường "sourceText" phải là đoạn nội dung nguyên văn (ít nhất 25 ký tự) trích trực tiếp từ tài liệu học tập làm căn cứ tạo câu hỏi.
 7. Trường "generationReason" phải giải thích ngắn gọn câu hỏi này kiểm tra đơn vị kiến thức nào và tại sao quan trọng (ít nhất 20 ký tự).
 8. Nếu bộ tài liệu có nguồn Web, trường "sourceRefId" phải là ID của nguồn được liệt kê ngay cạnh đơn vị kiến thức tương ứng; không chọn nguồn khác mục chỉ để điền ID.
-9. Với biểu thức toán học, dùng LaTeX inline dạng $...$ khi phù hợp. Nếu câu hỏi cần sơ đồ, đồ thị hoặc hình học để trả lời, thêm illustration với needsImage = true và tikzCode chỉ gồm lệnh vẽ bên trong tikzpicture. Chỉ dùng draw, fill, node, coordinate, path, addplot và môi trường axis/scope; không dùng lệnh đọc/ghi tệp, định nghĩa macro hay lệnh hệ thống.
+9. Với biểu thức toán học, dùng LaTeX inline dạng $...$ khi phù hợp. Với câu hỏi về khối chóp, lăng trụ, hình học không gian, đồ thị hàm số có đủ dữ kiện, miền diện tích tích phân hoặc biểu diễn hình học số phức, hãy tạo sơ đồ TikZ khi hình giúp hiểu bài; không bỏ hình nếu câu hỏi cần đọc hình để trả lời. Gắn illustration.needsImage = true và tikzCode chỉ gồm lệnh vẽ bên trong tikzpicture. Chỉ dùng draw, fill, node, coordinate, path, addplot và môi trường axis/scope; không dùng lệnh đọc/ghi tệp, định nghĩa macro hay lệnh hệ thống.
 10. Ngôn ngữ: ${pkg.request.language}. Đối tượng: ${pkg.request.audience}.`;
 
   const prompt = `TÀI LIỆU HỌC TẬP ĐÃ XÁC NHẬN (Chủ đề: ${pkg.topic}):

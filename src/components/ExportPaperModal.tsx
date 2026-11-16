@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QuizSet, ExamPaperConfig } from '../types';
 import { exportExamApi, exportExamDocxApi } from '../services/api';
 import { buildExamLatex } from '../utils/latexExport';
+import { normalizeQuizTitle } from '../utils/quizTitle';
 
 interface ExportPaperModalProps {
   quizSet: QuizSet;
@@ -17,7 +18,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
   const [config, setConfig] = useState<ExamPaperConfig>({
     schoolName: 'TRƯỜNG ĐẠI HỌC CÔNG NGHỆ',
     facultyName: 'KHOA CÔNG NGHỆ THÔNG TIN',
-    subjectName: quizSet.title,
+    subjectName: normalizeQuizTitle(quizSet.title),
     examName: 'ĐỀ THI KẾT THÚC HỌC PHẦN',
     examCode: '001',
     durationMinutes: quizSet.recommendedMinutes || 60,
@@ -85,7 +86,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `DeThi_${config.examCode || '001'}_${quizSet.title.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')}.tex`;
+      link.download = `DeThi_${config.examCode || '001'}_${normalizeQuizTitle(quizSet.title).replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')}.tex`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -96,7 +97,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `DeThi_${config.examCode || '001'}_${quizSet.title.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')}.html`;
+      link.download = `DeThi_${config.examCode || '001'}_${normalizeQuizTitle(quizSet.title).replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_')}.html`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -118,7 +119,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                 XUẤT ĐỀ THI
               </h2>
               <p className="text-xs text-slate-500">
-                Xuất đề thi giấy • Hỗ trợ in, Word DOCX và mã LaTeX/TikZ để biên dịch bằng LaTeX Workshop
+                Xuất đề thi giấy • Hỗ trợ in, Word DOCX và LaTeX/TikZ (biên dịch bằng XeLaTeX)
               </p>
             </div>
           </div>
@@ -282,13 +283,13 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
                   />
                   <div>
                     <span className="block font-bold">LaTeX (.tex)</span>
-                    <span className="text-[10px] text-slate-500 font-normal">TikZ + LaTeX Workshop</span>
+                    <span className="text-[10px] text-slate-500 font-normal">TikZ + XeLaTeX (LaTeX Workshop)</span>
                   </div>
                 </label>
               </div>
               {formatType === 'tex' && (
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Tải mã đề thi để mở trong VS Code và biên dịch bằng LaTeX Workshop. Công thức và hình TikZ sẽ nằm trong tệp này.
+                  Tải tệp .tex, mở bằng VS Code và chọn XeLaTeX trong LaTeX Workshop để biên dịch. Công thức và hình TikZ sẽ nằm trong tệp này.
                 </p>
               )}
             </div>
@@ -386,7 +387,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
               {formatType === 'tex' ? (
                 <div className="flex-1 overflow-auto p-4">
                   <p className="mb-3 rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-900">
-                    Đây là mã nguồn LaTeX của đề. Xuất tệp .tex rồi dùng LaTeX Workshop để biên dịch PDF.
+                    Đây là mã nguồn LaTeX của đề. Xuất tệp .tex rồi dùng XeLaTeX trong LaTeX Workshop để biên dịch PDF.
                   </p>
                   <pre className="whitespace-pre-wrap break-words rounded-lg bg-slate-900 p-4 text-[11px] leading-relaxed text-slate-100">
                     {buildExamLatex(quizSet, config)}
@@ -423,7 +424,7 @@ export const ExportPaperModal: React.FC<ExportPaperModalProps> = ({
             <button
               onClick={handlePrint}
               disabled={formatType === 'tex'}
-              title={formatType === 'tex' ? 'Hãy xuất tệp .tex và biên dịch bằng LaTeX Workshop' : undefined}
+              title={formatType === 'tex' ? 'Hãy xuất tệp .tex và biên dịch bằng XeLaTeX trong LaTeX Workshop' : undefined}
               className="px-4 py-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-[18px]">print</span>
