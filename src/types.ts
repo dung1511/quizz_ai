@@ -304,6 +304,19 @@ export interface QuizAttempt {
   }[];
 }
 
+export interface QuizAttemptRecord {
+  attempt: QuizAttempt;
+  quizSet: QuizSet;
+  attemptType: 'quiz' | 'review';
+  sourceAttemptId?: string;
+}
+
+export interface AccountUser {
+  id: string;
+  email: string;
+  displayName: string;
+}
+
 // 22. & 23. FORM ĐỀ THI GIẤY CHUẨN ĐỀ THI THẬT
 export interface ExamPaperConfig {
   schoolName: string;

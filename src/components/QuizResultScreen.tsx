@@ -8,6 +8,9 @@ interface QuizResultScreenProps {
   onRetakeQuiz: () => void;
   onBackToHome: () => void;
   onCreateQuizFromMistakes?: () => void;
+  isReviewMode?: boolean;
+  saveError?: string | null;
+  onRetrySave?: () => void;
 }
 
 export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
@@ -16,7 +19,9 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
   onViewDetailedReview,
   onRetakeQuiz,
   onBackToHome,
-  onCreateQuizFromMistakes,
+  isReviewMode = false,
+  saveError,
+  onRetrySave,
 }) => {
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -64,7 +69,23 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
   const rank = getRankBadge(attempt.percentage);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-12 space-y-8">
+      {saveError && (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>Kết quả đã hiển thị nhưng chưa lưu được vào lịch sử: {saveError}</span>
+          {onRetrySave && (
+            <button
+              onClick={onRetrySave}
+              className="shrink-0 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800"
+            >
+              Thử lưu lại
+            </button>
+          )}
+        </div>
+      )}
       {/* Top Congratulatory Hero Card */}
       <div className="bg-white rounded-3xl border border-[#e2e4e8] p-6 sm:p-10 shadow-sm text-center space-y-6 relative overflow-hidden">
         {/* Decorative background glow */}
@@ -72,7 +93,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
 
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#f2f4f6] text-[#464555]">
           <span className="material-symbols-outlined text-[16px] text-[#15803d]">verified</span>
-          <span>Báo cáo kết quả bài kiểm tra</span>
+          <span>{isReviewMode ? 'Kết quả ôn tập và củng cố' : 'Báo cáo kết quả bài kiểm tra'}</span>
         </div>
 
         <div className="space-y-2">
@@ -233,7 +254,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
           className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#e2e4e8] hover:border-[#15803d] bg-white hover:bg-[#f7f9fb] font-semibold text-sm text-[#191c1e] transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
-          <span>Làm lại đề thi</span>
+          <span>{isReviewMode ? 'Ôn tập lại' : 'Làm lại đề thi'}</span>
         </button>
 
         <button
@@ -242,7 +263,7 @@ export const QuizResultScreen: React.FC<QuizResultScreenProps> = ({
           className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#e2e4e8] hover:bg-[#f7f9fb] font-semibold text-sm text-[#464555] transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">home</span>
-          <span>Trang chủ</span>
+          <span>{isReviewMode ? 'Quay về lịch sử điểm' : 'Trang chủ'}</span>
         </button>
       </div>
     </div>

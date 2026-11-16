@@ -108,7 +108,7 @@ export const QuizEditScreen: React.FC<QuizEditScreenProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-12 space-y-6">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-4 border-b border-[#e2e4e8]">
         <div>

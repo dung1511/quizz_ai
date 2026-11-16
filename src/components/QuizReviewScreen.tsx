@@ -10,6 +10,7 @@ interface QuizReviewScreenProps {
   quizSet: QuizSet;
   onBackToResult: () => void;
   onRetakeQuiz: () => void;
+  isReviewMode?: boolean;
 }
 
 export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
@@ -17,6 +18,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
   quizSet,
   onBackToResult,
   onRetakeQuiz,
+  isReviewMode = false,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'correct' | 'wrong' | 'flagged'>('all');
   const [selectedSourceQuestion, setSelectedSourceQuestion] = useState<Question | null>(null);
@@ -40,7 +42,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-12 space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
@@ -175,7 +177,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
                     <span>Truy xuất nguồn</span>
                   </button>
 
-                  {!isCorrect && (
+                  {!isCorrect && !isReviewMode && (
                     <button
                       onClick={() =>
                         setPracticeKU({
@@ -283,7 +285,7 @@ export const QuizReviewScreen: React.FC<QuizReviewScreenProps> = ({
         onClose={() => setSelectedSourceQuestion(null)}
       />
 
-      {practiceKU && (
+      {practiceKU && !isReviewMode && (
         <PracticeModal
           knowledgeUnitName={practiceKU.name}
           sourceText={practiceKU.sourceText}

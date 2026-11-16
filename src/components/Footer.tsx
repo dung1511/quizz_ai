@@ -14,7 +14,7 @@ export const Footer: React.FC<FooterProps> = ({
 }) => {
   return (
     <footer className="border-t border-slate-200/80 bg-white mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="w-full px-4 sm:px-8 lg:px-12 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-md">
           <button
             type="button"
@@ -87,7 +87,7 @@ export const Footer: React.FC<FooterProps> = ({
       </div>
 
       <div className="border-t border-slate-100 bg-slate-50/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        <div className="w-full px-4 sm:px-8 lg:px-12 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <span>© 2026 quizzAi. Thiết kế ưu tiên trải nghiệm học tập tiếng Việt.</span>
           <span>Trực quan · Mềm mại · Dễ sử dụng</span>
         </div>

@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
-import { ScreenId } from '../types';
+import { AccountUser, ScreenId } from '../types';
 
 interface HeaderProps {
   currentScreen: ScreenId;
   onNavigate: (screen: ScreenId) => void;
   quizTitle?: string;
   hasActiveQuiz: boolean;
-  onOpenSampleModal?: () => void;
   onStartWorkspace?: () => void;
+  currentUser: AccountUser;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
   onNavigate,
-  onOpenSampleModal,
   onStartWorkspace,
+  currentUser,
+  onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -47,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/92 backdrop-blur-md border-b border-slate-200/75">
       {/* Primary 1-Row Top Bar: Brand — Simple Menu — Primary Action */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
+      <div className="w-full px-4 sm:px-8 lg:px-12 h-16 flex items-center justify-between gap-8">
         {/* Zone 1: Brand wordmark "quizzAi" */}
         <button
           type="button"
@@ -122,23 +124,21 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Kho tài liệu
           </button>
-          {onOpenSampleModal && (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenSampleModal();
-              }}
-              id="open-samples-header-btn"
-              className="whitespace-nowrap shrink-0 py-1 border-b-2 border-transparent hover:text-[#ec4899] hover:border-[#ec4899]/50 transition-colors cursor-pointer"
-            >
-              Tài liệu mẫu
-            </button>
-          )}
         </nav>
 
         {/* Zone 3: Single Primary CTA + mobile menu toggle */}
         <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden xl:block max-w-40 truncate text-xs font-semibold text-slate-600">
+            {currentUser.displayName}
+          </span>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="hidden sm:inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-rose-700"
+          >
+            <span className="material-symbols-outlined text-[17px]">logout</span>
+            Đăng xuất
+          </button>
           <button
             type="button"
             onClick={handleGoWorkspace}
@@ -198,25 +198,26 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Kho tài liệu
           </button>
-          {onOpenSampleModal && (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenSampleModal();
-              }}
-              className="text-left px-3 py-2.5 rounded-xl hover:bg-slate-50"
-            >
-              Tài liệu mẫu
-            </button>
-          )}
+          <div className="px-3 py-2.5 text-xs text-slate-500">
+            Đăng nhập: <span className="font-semibold text-slate-700">{currentUser.email}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onLogout();
+            }}
+            className="text-left px-3 py-2.5 rounded-xl text-rose-700 hover:bg-rose-50"
+          >
+            Đăng xuất
+          </button>
         </div>
       )}
 
       {/* Contextual Workflow Bar: shown only when working inside a quiz/library screen */}
       {currentScreen !== 'upload' && (
         <div className="bg-slate-50/90 border-t border-slate-200/60 overflow-x-auto no-scrollbar py-1.5 px-4 sm:px-6">
-          <div className="max-w-7xl mx-auto flex items-center gap-1.5 text-xs min-w-max">
+          <div className="w-full flex items-center gap-1.5 px-2 text-xs min-w-max">
             {screensList.map((screen) => {
               const isActive = currentScreen === screen.id;
               return (

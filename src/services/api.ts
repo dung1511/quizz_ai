@@ -1,6 +1,8 @@
 import {
   DocumentSource,
   QuizSet,
+  QuizAttempt,
+  QuizAttemptRecord,
   Question,
   ExamMatrix,
   DifficultyLevel,
@@ -10,7 +12,87 @@ import {
   KnowledgePackage,
   KnowledgeChapterItem,
   PipelineStepEvent,
+  AccountUser,
 } from '../types';
+
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const errorData: unknown = await res.json().catch(() => null);
+  if (
+    typeof errorData === 'object' &&
+    errorData !== null &&
+    'error' in errorData &&
+    typeof errorData.error === 'string'
+  ) {
+    return errorData.error;
+  }
+  return fallback;
+}
+
+export async function getCurrentUserApi(): Promise<AccountUser | null> {
+  const res = await fetch('/api/auth/me');
+  if (!res.ok) throw new Error(await readApiError(res, 'Không thể xác minh phiên đăng nhập.'));
+  let data: { user: AccountUser | null };
+  try {
+    data = (await res.json()) as { user: AccountUser | null };
+  } catch {
+    throw new Error('API tài khoản chưa sẵn sàng. Hãy khởi động lại máy chủ npm run dev.');
+  }
+  return data.user;
+}
+
+async function submitAuthApi(
+  endpoint: '/api/auth/login' | '/api/auth/register',
+  body: { email: string; password: string; displayName?: string }
+): Promise<AccountUser> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readApiError(res, 'Không thể đăng nhập.'));
+  const data = (await res.json()) as { user: AccountUser };
+  return data.user;
+}
+
+export function loginAccountApi(email: string, password: string): Promise<AccountUser> {
+  return submitAuthApi('/api/auth/login', { email, password });
+}
+
+export function registerAccountApi(
+  email: string,
+  password: string,
+  displayName: string
+): Promise<AccountUser> {
+  return submitAuthApi('/api/auth/register', { email, password, displayName });
+}
+
+export async function logoutAccountApi(): Promise<void> {
+  const res = await fetch('/api/auth/logout', { method: 'POST' });
+  if (!res.ok) throw new Error(await readApiError(res, 'Không thể đăng xuất.'));
+}
+
+export async function listQuizAttemptRecordsApi(): Promise<QuizAttemptRecord[]> {
+  const res = await fetch('/api/attempts');
+  if (!res.ok) throw new Error(await readApiError(res, 'Không thể tải lịch sử làm bài.'));
+  const data = (await res.json()) as { attempts: QuizAttemptRecord[] };
+  return data.attempts;
+}
+
+export async function saveQuizAttemptApi(params: {
+  attempt: QuizAttempt;
+  quizSet?: QuizSet;
+  attemptType: 'quiz' | 'review';
+  sourceAttemptId?: string;
+}): Promise<QuizAttemptRecord> {
+  const res = await fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(await readApiError(res, 'Không thể lưu kết quả làm bài.'));
+  const data = (await res.json()) as { record: QuizAttemptRecord };
+  return data.record;
+}
 
 /**
  * Extracts clean Vietnamese text safely from DOCX, PDF, or TXT file via backend

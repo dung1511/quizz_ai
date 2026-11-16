@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QuizSet, QuizAttempt } from '../types';
 import { MathText } from './MathText';
 import { TikzPreview } from './TikzPreview';
@@ -7,12 +7,14 @@ interface QuizTakingScreenProps {
   quizSet: QuizSet;
   onSubmitQuiz: (attempt: QuizAttempt) => void;
   onExitQuiz: () => void;
+  attemptType?: 'quiz' | 'review';
 }
 
 export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
   quizSet,
   onSubmitQuiz,
   onExitQuiz,
+  attemptType = 'quiz',
 }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
@@ -21,6 +23,8 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
   const [startTime] = useState<number>(Date.now());
+  const finishHandlerRef = useRef<(forced: boolean) => void>(() => undefined);
+  const hasFinishedRef = useRef(false);
 
   const currentQuestion = quizSet.questions[currentIndex];
   const totalQuestions = quizSet.questions.length;
@@ -30,14 +34,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
     if (isPaused) return;
 
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleFinish(true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -78,6 +75,8 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
   };
 
   const handleFinish = (forced: boolean = false) => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
     setShowSubmitModal(false);
 
     let correctCount = 0;
@@ -120,7 +119,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
       id: `attempt-${Date.now()}`,
       quizId: quizSet.id,
       quizTitle: quizSet.title,
-      completedAt: 'Vừa xong',
+      completedAt: new Date().toISOString(),
       timeSpentSeconds: timeSpent,
       answers,
       flaggedQuestions: flaggedList,
@@ -146,6 +145,16 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
     onSubmitQuiz(attempt);
   };
 
+  useEffect(() => {
+    finishHandlerRef.current = handleFinish;
+  }, [handleFinish]);
+
+  useEffect(() => {
+    if (timeRemaining === 0 && !hasFinishedRef.current) {
+      finishHandlerRef.current(true);
+    }
+  }, [timeRemaining]);
+
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -156,10 +165,10 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
   const isLastQuestion = currentIndex === totalQuestions - 1;
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] pb-16">
+    <div className="min-h-[calc(100vh-8rem)] w-full pb-16">
       {/* Sticky Exam Progress Bar */}
       <div className="bg-white border-b border-[#e2e4e8] sticky top-24 z-30 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="w-full px-4 sm:px-8 lg:px-12 py-3 flex items-center justify-between gap-4">
           {/* Left: Progress info */}
           <div className="flex items-center gap-3">
             <button
@@ -224,7 +233,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="w-full px-4 sm:px-8 lg:px-12 pt-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Column: Active Question */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-white rounded-2xl border border-[#e2e4e8] p-6 sm:p-8 shadow-xs space-y-6">
@@ -232,7 +241,7 @@ export const QuizTakingScreen: React.FC<QuizTakingScreenProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-[#e2e4e8]">
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded-md bg-[#16a34a]/10 text-[#15803d] font-bold text-xs">
-                  Câu hỏi {currentIndex + 1}
+                  {attemptType === 'review' ? 'Ôn tập' : 'Câu hỏi'} {currentIndex + 1}
                 </span>
                 {currentQuestion.topic && (
                   <span className="text-xs font-medium text-[#777587]">

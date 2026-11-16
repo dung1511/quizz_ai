@@ -15,6 +15,21 @@ import { generatePaperExamDOCX } from './server/docxExportService';
 import { extractTextFromBuffer, isBinaryZipOrDocx } from './server/documentExtractor';
 import { generateDocumentPrintHTML } from './server/documentPrintService';
 import { AiServiceError, getConfiguredApiKey } from './server/geminiClient';
+import {
+  createAccountId,
+  createSessionToken,
+  hashPassword,
+  hashSessionToken,
+  isValidEmail,
+  normalizeEmail,
+  SESSION_MAX_AGE_SECONDS,
+  verifyPassword,
+} from './server/auth';
+import {
+  buildReviewQuizSet,
+  QuizAttemptValidationError,
+  scoreQuizAttempt,
+} from './server/quizAttempts';
 import { parseUserRequest } from './server/aiText/requestParser';
 import {
   buildKnowledgeContent,
@@ -23,16 +38,125 @@ import {
 import { generateAndValidateWithRepair } from './server/aiText/questionValidatorRepair';
 import {
   getKnowledgePackage,
+  createAccountWithSession,
+  createAuthSession,
+  deleteAuthSession,
+  getAccountCredentials,
+  getAccountForSession,
+  getQuizAttemptRecord,
+  listQuizAttemptRecords,
   getQuizById,
   getQuizSources,
   initializeStorage,
   listQuizzes,
+  saveQuizAttemptRecord,
   saveQuizAndSources,
 } from './server/storage';
-import { QuizSet } from './src/types';
+import { AccountUser, QuizAttempt, QuizAttemptRecord, QuizSet } from './src/types';
 import { renderTikzPreview, TikzPreviewError } from './server/tikzPreviewService';
 
 dotenv.config();
+
+function getSessionToken(req: express.Request): string | null {
+  const cookie = req.headers.cookie
+    ?.split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('quizai_session='));
+  return cookie ? cookie.slice('quizai_session='.length) : null;
+}
+
+async function getRequestUser(req: express.Request): Promise<AccountUser | null> {
+  const token = getSessionToken(req);
+  return token ? getAccountForSession(hashSessionToken(token)) : null;
+}
+
+function setSessionCookie(res: express.Response, token: string): void {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader(
+    'Set-Cookie',
+    `quizai_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}${secure}`
+  );
+}
+
+function clearSessionCookie(res: express.Response): void {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader(
+    'Set-Cookie',
+    `quizai_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`
+  );
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isQuizAttemptPayload(value: unknown): value is QuizAttempt {
+  if (!isObjectRecord(value) || !isObjectRecord(value.answers)) return false;
+  return (
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.quizId === 'string' &&
+    typeof value.timeSpentSeconds === 'number' &&
+    Number.isFinite(value.timeSpentSeconds) &&
+    value.timeSpentSeconds >= 0 &&
+    Object.values(value.answers).every(
+      (answer) => typeof answer === 'string' && ['A', 'B', 'C', 'D'].includes(answer)
+    ) &&
+    Array.isArray(value.flaggedQuestions) &&
+    value.flaggedQuestions.every((id) => typeof id === 'string')
+  );
+}
+
+function isQuizSetPayload(value: unknown): value is QuizSet {
+  if (
+    !isObjectRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.documentName !== 'string' ||
+    !Array.isArray(value.questions) ||
+    value.questions.length === 0 ||
+    value.questions.length > 100
+  ) {
+    return false;
+  }
+
+  const questionIds = new Set<string>();
+  return value.questions.every((question) => {
+    if (
+      !isObjectRecord(question) ||
+      typeof question.id !== 'string' ||
+      questionIds.has(question.id) ||
+      typeof question.questionText !== 'string' ||
+      typeof question.explanation !== 'string' ||
+      !['easy', 'medium', 'hard'].includes(String(question.difficulty)) ||
+      typeof question.topic !== 'string' ||
+      !Array.isArray(question.options) ||
+      question.options.length !== 4 ||
+      !isObjectRecord(question.source) ||
+      typeof question.source.chapter !== 'string' ||
+      typeof question.source.page !== 'number'
+    ) {
+      return false;
+    }
+
+    const optionKeys = question.options.map((option) =>
+      isObjectRecord(option) ? option.key : undefined
+    );
+    if (
+      optionKeys.some((key) => !['A', 'B', 'C', 'D'].includes(String(key))) ||
+      new Set(optionKeys).size !== 4 ||
+      !optionKeys.includes(question.correctAnswer) ||
+      question.options.some(
+        (option) => !isObjectRecord(option) || typeof option.text !== 'string'
+      )
+    ) {
+      return false;
+    }
+
+    questionIds.add(question.id);
+    return true;
+  });
+}
 
 async function startServer() {
   const app = express();
@@ -52,6 +176,192 @@ async function startServer() {
       hasGeminiApiKey: Boolean(getConfiguredApiKey()),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/auth/me', async (req, res) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.json({ user: await getRequestUser(req) });
+    } catch (error) {
+      console.error('[QuizAI][auth-session] Error:', error);
+      res.status(500).json({ error: 'Không thể xác minh phiên đăng nhập.' });
+    }
+  });
+
+  app.post('/api/auth/register', async (req, res) => {
+    const body: unknown = req.body;
+    if (!isObjectRecord(body)) {
+      res.status(400).json({ error: 'Thông tin đăng ký không hợp lệ.' });
+      return;
+    }
+
+    const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    const requestedName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
+    if (!isValidEmail(email)) {
+      res.status(400).json({ error: 'Vui lòng nhập địa chỉ email hợp lệ.' });
+      return;
+    }
+    if (password.length < 8 || password.length > 128) {
+      res.status(400).json({ error: 'Mật khẩu cần có từ 8 đến 128 ký tự.' });
+      return;
+    }
+
+    const user: AccountUser = {
+      id: createAccountId(),
+      email,
+      displayName: (requestedName || email.split('@')[0]).slice(0, 191),
+    };
+    const token = createSessionToken();
+    const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+    try {
+      const passwordHash = await hashPassword(password);
+      await createAccountWithSession(user, passwordHash, hashSessionToken(token), expiresAt);
+      setSessionCookie(res, token);
+      res.status(201).json({ user });
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'ER_DUP_ENTRY'
+      ) {
+        res.status(409).json({ error: 'Email này đã được đăng ký.' });
+        return;
+      }
+      console.error('[QuizAI][auth-register] Error:', error);
+      res.status(500).json({ error: 'Không thể tạo tài khoản lúc này.' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    const body: unknown = req.body;
+    if (!isObjectRecord(body)) {
+      res.status(400).json({ error: 'Thông tin đăng nhập không hợp lệ.' });
+      return;
+    }
+
+    const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (!isValidEmail(email) || password.length === 0 || password.length > 128) {
+      res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
+      return;
+    }
+
+    try {
+      const credentials = await getAccountCredentials(email);
+      const passwordMatches = credentials
+        ? await verifyPassword(password, credentials.passwordHash)
+        : await verifyPassword(
+            password,
+            `scrypt$00000000000000000000000000000000$${'0'.repeat(128)}`
+          );
+      if (!credentials || !passwordMatches) {
+        res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
+        return;
+      }
+
+      const token = createSessionToken();
+      const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+      await createAuthSession(credentials.user.id, hashSessionToken(token), expiresAt);
+      setSessionCookie(res, token);
+      res.json({ user: credentials.user });
+    } catch (error) {
+      console.error('[QuizAI][auth-login] Error:', error);
+      res.status(500).json({ error: 'Không thể đăng nhập lúc này.' });
+    }
+  });
+
+  app.post('/api/auth/logout', async (req, res) => {
+    try {
+      const token = getSessionToken(req);
+      if (token) await deleteAuthSession(hashSessionToken(token));
+      clearSessionCookie(res);
+      res.status(204).end();
+    } catch (error) {
+      console.error('[QuizAI][auth-logout] Error:', error);
+      res.status(500).json({ error: 'Không thể đăng xuất lúc này.' });
+    }
+  });
+
+  app.get('/api/attempts', async (req, res) => {
+    try {
+      const user = await getRequestUser(req);
+      if (!user) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập để xem lịch sử làm bài.' });
+        return;
+      }
+      res.set('Cache-Control', 'no-store');
+      res.json({ attempts: await listQuizAttemptRecords(user.id) });
+    } catch (error) {
+      console.error('[QuizAI][attempts-list] Error:', error);
+      res.status(500).json({ error: 'Không thể tải lịch sử làm bài.' });
+    }
+  });
+
+  app.post('/api/attempts', async (req, res) => {
+    try {
+      const user = await getRequestUser(req);
+      if (!user) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập trước khi lưu kết quả.' });
+        return;
+      }
+
+      const body: unknown = req.body;
+      if (
+        !isObjectRecord(body) ||
+        !isQuizAttemptPayload(body.attempt) ||
+        (body.attemptType !== 'quiz' && body.attemptType !== 'review')
+      ) {
+        res.status(400).json({ error: 'Dữ liệu kết quả làm bài không hợp lệ.' });
+        return;
+      }
+
+      let quizSet: QuizSet;
+      let sourceAttemptId: string | undefined;
+      if (body.attemptType === 'quiz') {
+        if (!isQuizSetPayload(body.quizSet)) {
+          res.status(400).json({ error: 'Thiếu bộ câu hỏi của lượt làm bài.' });
+          return;
+        }
+        quizSet = body.quizSet;
+      } else {
+        sourceAttemptId =
+          typeof body.sourceAttemptId === 'string' ? body.sourceAttemptId : undefined;
+        if (!sourceAttemptId) {
+          res.status(400).json({ error: 'Thiếu lượt thi gốc của bài ôn tập.' });
+          return;
+        }
+        const sourceRecord = await getQuizAttemptRecord(user.id, sourceAttemptId);
+        if (!sourceRecord || sourceRecord.attemptType !== 'quiz') {
+          res.status(404).json({ error: 'Không tìm thấy lượt thi gốc trong tài khoản này.' });
+          return;
+        }
+        quizSet = buildReviewQuizSet(sourceRecord.quizSet, sourceRecord.attempt);
+        if (quizSet.questions.length === 0) {
+          res.status(422).json({ error: 'Lượt thi gốc không có câu sai cần ôn tập.' });
+          return;
+        }
+      }
+
+      const attempt = scoreQuizAttempt(body.attempt, quizSet);
+      const record: QuizAttemptRecord = {
+        attempt,
+        quizSet,
+        attemptType: body.attemptType,
+        sourceAttemptId,
+      };
+      const savedRecord = await saveQuizAttemptRecord(user.id, record);
+      res.set('Cache-Control', 'no-store');
+      res.status(201).json({ record: savedRecord });
+    } catch (error) {
+      if (error instanceof QuizAttemptValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      console.error('[QuizAI][attempt-save] Error:', error);
+      res.status(500).json({ error: 'Không thể lưu kết quả làm bài.' });
+    }
   });
 
   // POST /api/documents/extract
@@ -402,6 +712,19 @@ async function startServer() {
   app.post(
     ['/api/ai/generate-from-knowledge', '/api/ai/generate-from-knowledge/'],
     async (req, res) => {
+      let authenticatedUser: AccountUser | null;
+      try {
+        authenticatedUser = await getRequestUser(req);
+      } catch (error) {
+        console.error('[QuizAI][generate-from-knowledge][auth] Error:', error);
+        res.status(500).json({ error: 'Không thể xác minh tài khoản.' });
+        return;
+      }
+      if (!authenticatedUser) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập để lưu bộ đề vào tài khoản.' });
+        return;
+      }
+
       const wantsStream =
         req.body?.stream === true ||
         (req.headers.accept || '').includes('text/event-stream');
@@ -466,7 +789,7 @@ async function startServer() {
           compiledKnowledgeText: confirmedPkg.compiledMarkdown,
         };
 
-        await saveQuizAndSources(quizSet, confirmedPkg);
+        await saveQuizAndSources(quizSet, confirmedPkg, authenticatedUser.id);
 
         onProgress?.({
           step: 'saving',
@@ -524,9 +847,15 @@ async function startServer() {
   );
 
   // List saved AI_TEXT quizzes
-  app.get('/api/quizzes', async (_req, res) => {
+  app.get('/api/quizzes', async (req, res) => {
     try {
-      res.json({ quizzes: await listQuizzes() });
+      const user = await getRequestUser(req);
+      if (!user) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập để xem bộ đề đã lưu.' });
+        return;
+      }
+      res.set('Cache-Control', 'no-store');
+      res.json({ quizzes: await listQuizzes(user.id) });
     } catch (error) {
       console.error('[QuizAI][quizzes] Error:', error);
       res.status(500).json({ error: 'Không thể tải danh sách bộ đề.' });
@@ -536,7 +865,12 @@ async function startServer() {
   // Get single quiz by ID
   app.get('/api/quizzes/:id', async (req, res) => {
     try {
-      const quiz = await getQuizById(req.params.id);
+      const user = await getRequestUser(req);
+      if (!user) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập để xem bộ đề.' });
+        return;
+      }
+      const quiz = await getQuizById(req.params.id, user.id);
       if (!quiz) {
         res.status(404).json({ error: 'Không tìm thấy bộ đề.' });
         return;
@@ -551,7 +885,12 @@ async function startServer() {
   // Get quiz sources & knowledge links
   app.get(['/api/quizzes/:id/sources', '/api/quizzes/:id/sources/'], async (req, res) => {
     try {
-      const sources = await getQuizSources(req.params.id);
+      const user = await getRequestUser(req);
+      if (!user) {
+        res.status(401).json({ error: 'Vui lòng đăng nhập để xem nguồn bộ đề.' });
+        return;
+      }
+      const sources = await getQuizSources(req.params.id, user.id);
       if (!sources) {
         res.status(404).json({ error: 'Không tìm thấy nguồn của bộ đề.' });
         return;
@@ -581,7 +920,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`QuizAI server running on http://0.0.0.0:${PORT}`);
+    console.log(`QuizAI server running on http://localhost:${PORT}`);
   });
 }
 

@@ -3,6 +3,8 @@ import {
   ScreenId,
   QuizSet,
   QuizAttempt,
+  QuizAttemptRecord,
+  AccountUser,
   DifficultyLevel,
   QuestionType,
   QuizStyle,
@@ -15,7 +17,15 @@ import {
   RECENT_QUIZZES_LIST,
   SAMPLE_DOCUMENTS,
 } from './data/sampleData';
-import { listSavedQuizzesApi } from './services/api';
+import {
+  getCurrentUserApi,
+  listQuizAttemptRecordsApi,
+  listSavedQuizzesApi,
+  logoutAccountApi,
+  saveQuizAttemptApi,
+} from './services/api';
+import { buildReviewQuizSet } from './utils/quizReview';
+import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
 import { UploadScreen } from './components/UploadScreen';
 import { GeneratingScreen } from './components/GeneratingScreen';
@@ -33,20 +43,72 @@ export default function App() {
   const [activeQuizSet, setActiveQuizSet] = useState<QuizSet>(INITIAL_QUIZ_SET);
   const [activeAttempt, setActiveAttempt] = useState<QuizAttempt>(INITIAL_QUIZ_ATTEMPT);
   const [allQuizzes, setAllQuizzes] = useState<QuizSet[]>(RECENT_QUIZZES_LIST);
-  const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([INITIAL_QUIZ_ATTEMPT]);
+  const [allAttempts, setAllAttempts] = useState<QuizAttemptRecord[]>([]);
   const [allDocuments, setAllDocuments] = useState<(SampleDocument | DocumentSource)[]>(SAMPLE_DOCUMENTS);
   const [isSampleModalOpen, setIsSampleModalOpen] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<AccountUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [accountDataError, setAccountDataError] = useState<string | null>(null);
+  const [attemptSaveError, setAttemptSaveError] = useState<string | null>(null);
+  const [unsavedAttempt, setUnsavedAttempt] = useState<{
+    attempt: QuizAttempt;
+    quizSet: QuizSet;
+    attemptType: 'quiz' | 'review';
+    sourceAttemptId?: string;
+  } | null>(null);
+  const [activeAttemptType, setActiveAttemptType] = useState<'quiz' | 'review'>('quiz');
+  const [reviewSourceAttemptId, setReviewSourceAttemptId] = useState<string>();
+  const [libraryInitialTab, setLibraryInitialTab] = useState<
+    'documents' | 'quizzes' | 'history'
+  >('documents');
+
+  const loadAccountData = async () => {
+    const [records, savedQuizzes] = await Promise.all([
+      listQuizAttemptRecordsApi(),
+      listSavedQuizzesApi(),
+    ]);
+    setAllAttempts(records);
+
+    const quizzesById = new Map<string, QuizSet>();
+    for (const quiz of RECENT_QUIZZES_LIST) quizzesById.set(quiz.id, quiz);
+    for (const quiz of savedQuizzes) quizzesById.set(quiz.id, quiz);
+    for (const record of records) {
+      if (record.attemptType === 'quiz') quizzesById.set(record.quizSet.id, record.quizSet);
+    }
+    setAllQuizzes([...quizzesById.values()]);
+    setAccountDataError(null);
+  };
+
+  const checkCurrentSession = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    setAccountDataError(null);
+    try {
+      const user = await getCurrentUserApi();
+      setCurrentUser(user);
+      if (user) {
+        try {
+          await loadAccountData();
+        } catch (error) {
+          setAccountDataError(
+            error instanceof Error ? error.message : 'Không thể tải dữ liệu tài khoản.'
+          );
+        }
+      } else {
+        setAllAttempts([]);
+      }
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : 'Không thể xác minh phiên đăng nhập.'
+      );
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   useEffect(() => {
-    listSavedQuizzesApi().then((saved) => {
-      if (saved.length > 0) {
-        setAllQuizzes((prev) => {
-          const existingIds = new Set(prev.map((q) => q.id));
-          const uniqueSaved = saved.filter((q) => !existingIds.has(q.id));
-          return [...uniqueSaved, ...prev];
-        });
-      }
-    });
+    void checkCurrentSession();
   }, []);
 
   // Generation parameters state
@@ -81,21 +143,115 @@ export default function App() {
     strictSourceOnly: boolean;
   }) => {
     setGenerationConfig(config);
+    setActiveAttemptType('quiz');
+    setReviewSourceAttemptId(undefined);
     setCurrentScreen('generating');
   };
 
   // Handler: Complete AI generation with generated QuizSet
   const handleGenerationComplete = (generatedQuizSet: QuizSet) => {
     setActiveQuizSet(generatedQuizSet);
+    setActiveAttemptType('quiz');
+    setReviewSourceAttemptId(undefined);
     setAllQuizzes((prev) => [generatedQuizSet, ...prev]);
     setCurrentScreen('quiz-detail');
   };
 
-  // Handler: Submit Quiz Attempt
-  const handleSubmitQuiz = (attempt: QuizAttempt) => {
+  const handleAuthenticated = async (user: AccountUser) => {
+    setCurrentUser(user);
+    try {
+      await loadAccountData();
+    } catch (error) {
+      setAccountDataError(
+        error instanceof Error ? error.message : 'Không thể tải dữ liệu tài khoản.'
+      );
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutAccountApi();
+      setCurrentUser(null);
+      setAllAttempts([]);
+      setAllQuizzes(RECENT_QUIZZES_LIST);
+      setActiveQuizSet(INITIAL_QUIZ_SET);
+      setActiveAttempt(INITIAL_QUIZ_ATTEMPT);
+      setActiveAttemptType('quiz');
+      setReviewSourceAttemptId(undefined);
+      setUnsavedAttempt(null);
+      setAttemptSaveError(null);
+      setAccountDataError(null);
+      setCurrentScreen('upload');
+    } catch (error) {
+      setAccountDataError(error instanceof Error ? error.message : 'Không thể đăng xuất.');
+    }
+  };
+
+  const saveAttemptRecord = async (pending: {
+    attempt: QuizAttempt;
+    quizSet: QuizSet;
+    attemptType: 'quiz' | 'review';
+    sourceAttemptId?: string;
+  }) => {
+    const record = await saveQuizAttemptApi(pending);
+    setActiveAttempt(record.attempt);
+    setAllAttempts((previous) => [
+      record,
+      ...previous.filter((item) => item.attempt.id !== record.attempt.id),
+    ]);
+    if (record.attemptType === 'quiz') {
+      setAllQuizzes((previous) => [
+        record.quizSet,
+        ...previous.filter((quiz) => quiz.id !== record.quizSet.id),
+      ]);
+    }
+    setUnsavedAttempt(null);
+    setAttemptSaveError(null);
+  };
+
+  const handleSubmitQuiz = async (attempt: QuizAttempt) => {
     setActiveAttempt(attempt);
-    setAllAttempts((prev) => [attempt, ...prev]);
+    const pending = {
+      attempt,
+      quizSet: activeQuizSet,
+      attemptType: activeAttemptType,
+      sourceAttemptId: activeAttemptType === 'review' ? reviewSourceAttemptId : undefined,
+    };
+    try {
+      await saveAttemptRecord(pending);
+    } catch (error) {
+      setUnsavedAttempt(pending);
+      setAttemptSaveError(
+        error instanceof Error ? error.message : 'Không thể lưu kết quả làm bài.'
+      );
+    }
     setCurrentScreen('quiz-result');
+  };
+
+  const handleRetrySavingAttempt = async () => {
+    if (!unsavedAttempt) return;
+    try {
+      await saveAttemptRecord(unsavedAttempt);
+    } catch (error) {
+      setAttemptSaveError(
+        error instanceof Error ? error.message : 'Không thể lưu kết quả làm bài.'
+      );
+    }
+  };
+
+  const handleStartReview = (record: QuizAttemptRecord) => {
+    const reviewQuiz = buildReviewQuizSet(record.quizSet, record.attempt);
+    if (reviewQuiz.questions.length === 0) return;
+    setActiveQuizSet(reviewQuiz);
+    setActiveAttemptType('review');
+    setReviewSourceAttemptId(record.attempt.id);
+    setAttemptSaveError(null);
+    setCurrentScreen('quiz-taking');
+  };
+
+  const handleBackToHistory = () => {
+    setLibraryInitialTab('history');
+    setCurrentScreen('library-history');
   };
 
   // Handler: Save edits to questions
@@ -145,25 +301,55 @@ export default function App() {
     }, 60);
   };
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen w-full bg-[#fafbfd] flex items-center justify-center">
+        <p className="text-sm font-semibold text-slate-600">Đang kiểm tra phiên đăng nhập...</p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        onAuthenticated={handleAuthenticated}
+        initialError={authError}
+        onRetrySession={() => void checkCurrentSession()}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fafbfd] text-slate-900 flex flex-col font-sans selection:bg-pink-100 selection:text-green-800">
       {/* Top Header with Brand and Simple Menu */}
       <Header
         currentScreen={currentScreen}
-        onNavigate={(screen) => setCurrentScreen(screen)}
+        onNavigate={(screen) => {
+          if (screen === 'library-history') setLibraryInitialTab('documents');
+          setCurrentScreen(screen);
+        }}
         quizTitle={activeQuizSet.title}
         hasActiveQuiz={!!activeQuizSet}
-        onOpenSampleModal={() => setIsSampleModalOpen(true)}
         onStartWorkspace={handleStartWorkspace}
+        currentUser={currentUser}
+        onLogout={() => void handleLogout()}
       />
 
+      {accountDataError && (
+        <div role="alert" className="bg-rose-50 px-4 py-2 text-center text-sm text-rose-800">
+          {accountDataError}
+        </div>
+      )}
+
       {/* Main View Router */}
-      <main className="flex-1">
+      <main className="flex-1 w-full">
         {currentScreen === 'upload' && (
           <UploadScreen
             onStartGenerate={handleStartGenerate}
             onSelectRecentQuiz={(quiz) => {
               setActiveQuizSet(quiz);
+              setActiveAttemptType('quiz');
+              setReviewSourceAttemptId(undefined);
               setCurrentScreen('quiz-detail');
             }}
             onRegisterDocument={handleRegisterDocument}
@@ -206,7 +392,11 @@ export default function App() {
         {currentScreen === 'quiz-detail' && (
           <QuizDetailScreen
             quizSet={activeQuizSet}
-            onStartQuiz={() => setCurrentScreen('quiz-taking')}
+            onStartQuiz={() => {
+              setActiveAttemptType('quiz');
+              setReviewSourceAttemptId(undefined);
+              setCurrentScreen('quiz-taking');
+            }}
             onEditQuestions={() => setCurrentScreen('quiz-edit')}
             onBackToUpload={() => setCurrentScreen('upload')}
           />
@@ -216,7 +406,12 @@ export default function App() {
           <QuizTakingScreen
             quizSet={activeQuizSet}
             onSubmitQuiz={handleSubmitQuiz}
-            onExitQuiz={() => setCurrentScreen('quiz-detail')}
+            onExitQuiz={() =>
+              activeAttemptType === 'review'
+                ? handleBackToHistory()
+                : setCurrentScreen('quiz-detail')
+            }
+            attemptType={activeAttemptType}
           />
         )}
 
@@ -226,7 +421,12 @@ export default function App() {
             quizSet={activeQuizSet}
             onViewDetailedReview={() => setCurrentScreen('quiz-review')}
             onRetakeQuiz={() => setCurrentScreen('quiz-taking')}
-            onBackToHome={() => setCurrentScreen('upload')}
+            onBackToHome={() =>
+              activeAttemptType === 'review' ? handleBackToHistory() : setCurrentScreen('upload')
+            }
+            isReviewMode={activeAttemptType === 'review'}
+            saveError={attemptSaveError}
+            onRetrySave={unsavedAttempt ? handleRetrySavingAttempt : undefined}
           />
         )}
 
@@ -236,6 +436,7 @@ export default function App() {
             quizSet={activeQuizSet}
             onBackToResult={() => setCurrentScreen('quiz-result')}
             onRetakeQuiz={() => setCurrentScreen('quiz-taking')}
+            isReviewMode={activeAttemptType === 'review'}
           />
         )}
 
@@ -250,18 +451,24 @@ export default function App() {
         {currentScreen === 'library-history' && (
           <LibraryHistoryScreen
             documents={allDocuments}
+            initialTab={libraryInitialTab}
             quizList={allQuizzes}
             attemptsHistory={allAttempts}
             onSelectQuiz={(quiz) => {
               setActiveQuizSet(quiz);
+              setActiveAttemptType('quiz');
+              setReviewSourceAttemptId(undefined);
               setCurrentScreen('quiz-detail');
             }}
-            onSelectAttempt={(attempt) => {
-              setActiveAttempt(attempt);
-              const foundQuiz = allQuizzes.find((q) => q.id === attempt.quizId) || activeQuizSet;
-              setActiveQuizSet(foundQuiz);
+            onSelectAttempt={(record) => {
+              setActiveAttempt(record.attempt);
+              setActiveQuizSet(record.quizSet);
+              setActiveAttemptType(record.attemptType);
+              setReviewSourceAttemptId(record.sourceAttemptId);
+              setAttemptSaveError(null);
               setCurrentScreen('quiz-result');
             }}
+            onStartReview={handleStartReview}
             onCreateNew={() => setCurrentScreen('upload')}
             onDeleteDocument={handleDeleteDocument}
             onSelectDocumentForQuiz={handleSelectDocumentForQuiz}

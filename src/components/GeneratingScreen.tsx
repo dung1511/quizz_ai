@@ -176,7 +176,7 @@ export const GeneratingScreen: React.FC<GeneratingScreenProps> = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14 space-y-8 text-center">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-10 sm:py-14 space-y-8 text-center">
       {/* Central Animated Orb */}
       <div className="relative flex items-center justify-center mx-auto w-32 h-32 sm:w-36 sm:h-36">
         <div className="absolute inset-0 rounded-full bg-indigo-500/15 animate-ping opacity-75" />

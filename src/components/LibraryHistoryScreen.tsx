@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
-import { QuizSet, QuizAttempt, SampleDocument, DocumentSource } from '../types';
+import {
+  QuizSet,
+  QuizAttemptRecord,
+  SampleDocument,
+  DocumentSource,
+} from '../types';
 import { DocumentPrintModal } from './DocumentPrintModal';
 import { DocumentViewModal } from './DocumentViewModal';
 import { ExportPaperModal } from './ExportPaperModal';
+import { getIncorrectlyAnsweredQuestions } from '../utils/quizReview';
 
 interface LibraryHistoryScreenProps {
   documents?: (SampleDocument | DocumentSource)[];
+  initialTab?: 'documents' | 'quizzes' | 'history';
   quizList: QuizSet[];
-  attemptsHistory: QuizAttempt[];
+  attemptsHistory: QuizAttemptRecord[];
   onSelectQuiz: (quiz: QuizSet) => void;
-  onSelectAttempt: (attempt: QuizAttempt) => void;
+  onSelectAttempt: (record: QuizAttemptRecord) => void;
+  onStartReview: (record: QuizAttemptRecord) => void;
   onCreateNew: () => void;
   onDeleteDocument?: (id: string) => void;
   onSelectDocumentForQuiz?: (doc: SampleDocument | DocumentSource) => void;
@@ -17,16 +25,18 @@ interface LibraryHistoryScreenProps {
 
 export const LibraryHistoryScreen: React.FC<LibraryHistoryScreenProps> = ({
   documents = [],
+  initialTab = 'documents',
   quizList,
   attemptsHistory,
   onSelectQuiz,
   onSelectAttempt,
+  onStartReview,
   onCreateNew,
   onDeleteDocument,
   onSelectDocumentForQuiz,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'documents' | 'quizzes' | 'history'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'quizzes' | 'history'>(initialTab);
 
   // Modals state
   const [selectedDocForPrint, setSelectedDocForPrint] = useState<SampleDocument | DocumentSource | null>(null);
@@ -53,17 +63,20 @@ export const LibraryHistoryScreen: React.FC<LibraryHistoryScreenProps> = ({
   // Filter attempts
   const filteredAttempts = attemptsHistory.filter((a) => {
     const term = searchTerm.toLowerCase();
-    return a.quizTitle.toLowerCase().includes(term);
+    return (
+      a.attemptType === 'quiz' &&
+      a.quizSet.title.toLowerCase().includes(term)
+    );
   });
 
   const totalQuestions = quizList.reduce((acc, curr) => acc + curr.questions.length, 0);
   const avgScore =
     attemptsHistory.length > 0
       ? (
-          attemptsHistory.reduce((acc, curr) => acc + curr.score, 0) /
+          attemptsHistory.reduce((acc, curr) => acc + curr.attempt.score, 0) /
           attemptsHistory.length
         ).toFixed(1)
-      : '8.5';
+      : '0.0';
 
   const handleDownloadDoc = (doc: SampleDocument | DocumentSource) => {
     const content = 'rawText' in doc ? doc.rawText : doc.content || '';
@@ -79,7 +92,7 @@ export const LibraryHistoryScreen: React.FC<LibraryHistoryScreenProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-12 space-y-8">
       {/* Top Banner & Stats */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -478,47 +491,114 @@ export const LibraryHistoryScreen: React.FC<LibraryHistoryScreenProps> = ({
               <p className="text-sm font-semibold text-slate-700">Chưa có lượt thi nào</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-              <div className="divide-y divide-slate-100">
-                {filteredAttempts.map((attempt, idx) => (
-                  <div
-                    key={`${attempt.id || 'attempt'}-${idx}`}
-                    className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-sm sm:text-base">
-                          {attempt.quizTitle}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            attempt.score >= 8
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : attempt.score >= 5
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {attempt.score.toFixed(1)} / 10 điểm
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Thời gian nộp: {new Date(attempt.completedAt).toLocaleString('vi-VN')} • Đúng{' '}
-                        {attempt.correctCount}/{attempt.totalQuestions} câu ({attempt.percentage}%) • Thời gian:{' '}
-                        {Math.floor(attempt.timeSpentSeconds / 60)} phút {attempt.timeSpentSeconds % 60}s
-                      </p>
-                    </div>
+            <div className="space-y-4">
+              {filteredAttempts
+                .filter((record) => record.attemptType === 'quiz')
+                .map((record) => {
+                  const { attempt } = record;
+                  const wrongQuestions = getIncorrectlyAnsweredQuestions(record.quizSet, attempt);
+                  const reviewRecords = attemptsHistory.filter(
+                    (item) =>
+                      item.attemptType === 'review' &&
+                      item.sourceAttemptId === attempt.id
+                  );
 
-                    <button
-                      onClick={() => onSelectAttempt(attempt)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-1 self-start sm:self-auto"
+                  return (
+                    <article
+                      key={attempt.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xs"
                     >
-                      <span className="material-symbols-outlined text-[16px]">analytics</span>
-                      <span>Xem phân tích & Ôn tập</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                              {record.quizSet.title}
+                            </h3>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                attempt.score >= 8
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : attempt.score >= 5
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {attempt.score.toFixed(1)} / 10 điểm
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {new Date(attempt.completedAt).toLocaleString('vi-VN')} ·{' '}
+                            {attempt.totalQuestions} câu · Đúng {attempt.correctCount} · Sai{' '}
+                            {wrongQuestions.length} · Chưa trả lời {attempt.unansweredCount}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => onSelectAttempt(record)}
+                          className="self-start rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-800 transition-all hover:bg-slate-200 xl:self-auto"
+                        >
+                          Xem kết quả
+                        </button>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                        {wrongQuestions.length > 0 ? (
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <h4 className="text-sm font-bold text-emerald-950">
+                                Ôn tập và củng cố
+                              </h4>
+                              <p className="mt-1 text-xs text-emerald-800">
+                                {wrongQuestions.length} câu sai từ chính lượt thi này cần ôn lại.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => onStartReview(record)}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-800"
+                            >
+                              <span className="material-symbols-outlined text-[17px]">replay</span>
+                              Bắt đầu ôn tập
+                            </button>
+                          </div>
+                        ) : attempt.unansweredCount === 0 ? (
+                          <p className="text-sm font-semibold text-emerald-900">
+                            Bạn đã trả lời đúng tất cả câu hỏi, không có nội dung cần ôn tập.
+                          </p>
+                        ) : (
+                          <p className="text-sm font-semibold text-slate-700">
+                            Không có câu trả lời sai đã chọn để ôn tập; còn {attempt.unansweredCount}{' '}
+                            câu chưa trả lời.
+                          </p>
+                        )}
+                      </div>
+
+                      {reviewRecords.length > 0 && (
+                        <div className="mt-4 border-t border-slate-100 pt-4">
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                            Lịch sử ôn tập
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {reviewRecords.map((reviewRecord) => (
+                              <button
+                                key={reviewRecord.attempt.id}
+                                onClick={() => onSelectAttempt(reviewRecord)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
+                              >
+                                <span>
+                                  {new Date(reviewRecord.attempt.completedAt).toLocaleString('vi-VN')}
+                                </span>
+                                <span className="font-bold text-emerald-800">
+                                  {reviewRecord.attempt.correctCount}/
+                                  {reviewRecord.attempt.totalQuestions} đúng
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
             </div>
           )}
         </div>

@@ -104,7 +104,7 @@ export const QuizDetailScreen: React.FC<QuizDetailScreenProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+    <div className="w-full px-4 sm:px-8 lg:px-12 py-6 sm:py-10 space-y-6">
       {/* Top Breadcrumb & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
